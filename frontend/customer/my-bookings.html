@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Bookings - Rento</title>
+
+    <link rel="stylesheet" href="../public/style.css">
+</head>
+
+<body>
+
+<!-- ================= NAVBAR ================= -->
+
+<div class="navbar">
+
+    <div class="brand">
+        Rento
+    </div>
+
+    <div class="nav-links">
+
+        <a href="dashboard.html">Home</a>
+        <a href="browse-vehicles.html">Browse Vehicles</a>
+        <a href="my-bookings.html" class="active">My Bookings</a>
+        <a href="my-profile.html">Profile</a>
+
+    </div>
+
+    <div class="nav-auth">
+
+        <a href="../public/index.html">
+            Logout
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- ================= MY BOOKINGS ================= -->
+
+<main class="my-bookings-page">
+
+    <div class="my-bookings-container">
+
+        <div class="my-bookings-heading">
+
+            <div>
+                <h1>My Bookings</h1>
+
+                <p>
+                    View and manage your vehicle bookings.
+                </p>
+            </div>
+
+            <a href="browse-vehicles.html"
+               class="browse-more-btn">
+                Browse Vehicles
+            </a>
+
+        </div>
+
+
+        <!-- Booking List -->
+
+        <div id="bookings-list"
+             class="bookings-list">
+
+            <!-- JavaScript will add bookings here -->
+
+        </div>
+
+
+        <!-- Empty State -->
+
+        <div id="empty-bookings"
+             class="empty-bookings"
+             style="display: none;">
+
+            <div class="empty-bookings-icon">
+                📋
+            </div>
+
+            <h2>No Bookings Yet</h2>
+
+            <p>
+                You haven't made any vehicle bookings yet.
+            </p>
+
+            <a href="browse-vehicles.html"
+               class="confirmation-primary-btn">
+                Browse Vehicles
+            </a>
+
+        </div>
+
+    </div>
+
+</main>
+
+
+<!-- ================= FOOTER ================= -->
+
+<footer class="footer">
+
+    <div class="footer-content">
+
+        <div class="footer-section">
+
+            <h3>Rento</h3>
+
+            <p>
+                Rent a vehicle easily and conveniently.
+            </p>
+
+        </div>
+
+
+
+
+        <div class="footer-section">
+
+            <h3>Contact</h3>
+
+            <p>
+                Kathmandu, Nepal
+            </p>
+
+            <p>
+                support@rento.com
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="footer-bottom">
+
+        <p>
+            © 2026 Rento. All rights reserved.
+        </p>
+
+    </div>
+
+</footer>
+
+
+<script src="../public/data.js"></script>
+<script src="my-bookings.js"></script>
+
+</body>
+</html>
