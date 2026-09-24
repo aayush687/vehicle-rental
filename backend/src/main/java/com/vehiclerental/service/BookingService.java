@@ -147,42 +147,53 @@ public class BookingService {
         return getBookingById(newId);
     }
 
-    public Booking updateStatus(long id, String status) {
+public Booking updateStatus(long id, String status) {
 
-        Booking booking = getBookingById(id);
+    Booking booking = getBookingById(id);
 
-        if (booking == null) {
-            return null;
-        }
-
-        String sql = "UPDATE bookings SET status = ? WHERE id = ?";
-
-        jdbcTemplate.update(sql, status, id);
-
-        if (status.equalsIgnoreCase("confirmed")) {
-
-            String vehicleSql =
-                    "UPDATE vehicle SET status = 'Booked' WHERE id = ?";
-
-            jdbcTemplate.update(
-                    vehicleSql,
-                    booking.getVehicleId()
-            );
-
-        } else if (status.equalsIgnoreCase("completed")
-                || status.equalsIgnoreCase("cancelled")) {
-
-            String vehicleSql =
-                    "UPDATE vehicle SET status = 'Available' WHERE id = ?";
-
-            jdbcTemplate.update(
-                    vehicleSql,
-                    booking.getVehicleId()
-            );
-        }
-
-        return getBookingById(id);
+    if (booking == null) {
+        return null;
     }
+
+    String sql = "UPDATE bookings SET status = ? WHERE id = ?";
+
+    jdbcTemplate.update(sql, status, id);
+
+    if (status.equalsIgnoreCase("confirmed")) {
+
+        String vehicleSql =
+                "UPDATE vehicle SET status = 'Booked' WHERE id = ?";
+
+        jdbcTemplate.update(
+                vehicleSql,
+                booking.getVehicleId()
+        );
+
+    } else if (status.equalsIgnoreCase("completed")) {
+
+        // Vehicle has been returned.
+        // It must be checked before becoming available again.
+        String vehicleSql =
+                "UPDATE vehicle SET status = 'Maintenance' WHERE id = ?";
+
+        jdbcTemplate.update(
+                vehicleSql,
+                booking.getVehicleId()
+        );
+
+    } else if (status.equalsIgnoreCase("cancelled")) {
+
+        String vehicleSql =
+                "UPDATE vehicle SET status = 'Available' WHERE id = ?";
+
+        jdbcTemplate.update(
+                vehicleSql,
+                booking.getVehicleId()
+        );
+    }
+
+    return getBookingById(id);
+}
 
     public boolean deleteBooking(long id) {
 

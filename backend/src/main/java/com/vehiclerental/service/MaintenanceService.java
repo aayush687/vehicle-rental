@@ -103,6 +103,19 @@ public class MaintenanceService {
 
         jdbcTemplate.update(sql, status, id);
 
+        // When maintenance is completed,
+        // make the vehicle available again
+        if (status.equalsIgnoreCase("completed")) {
+
+            String vehicleSql =
+                    "UPDATE vehicle SET status = 'Available' WHERE id = ?";
+
+            jdbcTemplate.update(
+                    vehicleSql,
+                    maintenance.getVehicleId()
+            );
+        }
+
         return getMaintenanceById(id);
     }
 }
