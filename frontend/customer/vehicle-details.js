@@ -1,252 +1,691 @@
-// Same pattern used elsewhere: prefer whatever admin has saved in
-// localStorage, and only fall back to the sample VEHICLES from
-// data.js if nothing has been saved yet.
-function getVehicles() {
+const API_BASE =
+    "http://localhost:8080/api";
 
-    const savedVehicles =
-        JSON.parse(
-            localStorage.getItem("rentoVehicles")
+
+const urlParams =
+    new URLSearchParams(
+        window.location.search
+    );
+
+
+const vehicleId =
+    Number(
+        urlParams.get("id")
+    );
+
+
+const detailsContainer =
+    document.getElementById(
+        "vehicle-details"
+    );
+
+
+function escapeHTML(value) {
+
+    return String(
+        value
+    )
+
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+
+        .replace(
+            /</g,
+            "&lt;"
+        )
+
+        .replace(
+            />/g,
+            "&gt;"
+        )
+
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+
+        .replace(
+            /'/g,
+            "&#039;"
         );
-
-    if (
-        savedVehicles &&
-        Array.isArray(savedVehicles)
-    ) {
-
-        return savedVehicles;
-
-    }
-
-    if (typeof VEHICLES !== "undefined") {
-
-        return VEHICLES;
-
-    }
-
-    return [];
 
 }
 
-const urlParams = new URLSearchParams(
-    window.location.search
-);
-const vehicleId = Number(
-    urlParams.get("id")
-);
 
-const vehicle = getVehicles().find(function (vehicle) {
-    return vehicle.id === vehicleId;
-});
+function money(amount) {
 
-const detailsContainer =
-    document.getElementById("vehicle-details");
+    return (
+        "NPR " +
+        Number(
+            amount
+        ).toLocaleString(
+            "en-NP"
+        )
+    );
 
-if (!vehicle) {
+}
+
+function getVehicleImageSource(
+    image
+) {
+
+    if (!image) {
+
+        return "";
+
+    }
+
+
+    if (
+        image.startsWith(
+            "data:image/"
+        )
+    ) {
+
+        return image;
+
+    }
+
+
+    /*
+       Full URL
+    */
+
+    if (
+        image.startsWith(
+            "http://"
+        ) ||
+        image.startsWith(
+            "https://"
+        )
+    ) {
+
+        return image;
+
+    }
+
+
+    /*
+       Local image path
+    */
+
+    return (
+        "../public/" +
+        image.replace(
+            /^\/+/,
+            ""
+        )
+    );
+
+}
+
+
+function vehicleImageHTML(
+    vehicle
+) {
+
+    const imageSource =
+        getVehicleImageSource(
+            vehicle.image
+        );
+
+
+    if (!imageSource) {
+
+        return `
+
+            <div
+                class="vehicle-image-placeholder"
+            >
+                🚗
+            </div>
+
+        `;
+
+    }
+
+
+    return `
+
+        <img
+            src="${imageSource}"
+            class="vehicle-details-image"
+            alt="${escapeHTML(
+                vehicle.name ||
+                "Vehicle"
+            )}"
+            onerror="
+                this.outerHTML =
+                '<div class=&quot;vehicle-image-placeholder&quot;>🚗</div>'
+            "
+        >
+
+    `;
+
+}
+
+
+async function loadVehicle() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_BASE}/vehicles/${vehicleId}`
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Unable to load vehicle."
+            );
+
+        }
+
+
+        const vehicle =
+            await response.json();
+
+
+        if (!vehicle) {
+
+            showVehicleNotFound();
+
+            return;
+
+        }
+
+
+        displayVehicle(
+            vehicle
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error loading vehicle:",
+            error
+        );
+
+
+        detailsContainer.innerHTML = `
+
+            <div
+                class="vehicle-not-found"
+            >
+
+                <h2>
+                    Unable to load vehicle
+                </h2>
+
+                <p>
+                    Please make sure the backend
+                    server is running.
+                </p>
+
+                <a
+                    href="browse-vehicles.html"
+                    class="btn"
+                >
+                    Browse Vehicles
+                </a>
+
+            </div>
+
+        `;
+
+    }
+
+}
+
+function showVehicleNotFound() {
+
     detailsContainer.innerHTML = `
-        <div class="vehicle-not-found">
+
+        <div
+            class="vehicle-not-found"
+        >
+
             <h2>
                 Vehicle not found
             </h2>
+
             <p>
                 The vehicle you are looking for
                 does not exist.
             </p>
+
             <a
                 href="browse-vehicles.html"
                 class="btn"
             >
                 Browse Vehicles
             </a>
+
         </div>
+
     `;
-} else {
-    displayVehicle(vehicle);
+
 }
 
-// Display vehicle
+function displayVehicle(
+    vehicle
+) {
 
-function displayVehicle(vehicle) {
+    let availabilityText =
+        "";
 
-    let imageHTML = "";
-    if (vehicle.image) {
-        imageHTML = `
-            <img
-                src="../public/${vehicle.image}"
-                alt="${vehicle.name}"
-                class="vehicle-details-image"
-            >
-        `;
+
+    const normalizedStatus =
+        String(
+            vehicle.status || ""
+        ).toLowerCase();
+
+
+    if (
+        normalizedStatus ===
+        "available"
+    ) {
+
+        availabilityText =
+            "Available";
+
+    } else if (
+        normalizedStatus ===
+        "booked"
+    ) {
+
+        availabilityText =
+            "Currently Booked";
+
+    } else if (
+        normalizedStatus ===
+        "maintenance"
+    ) {
+
+        availabilityText =
+            "Under Maintenance";
+
     } else {
-        imageHTML = `
-            <div class="vehicle-image-placeholder">
-                🚗
-            </div>
-        `;
+
+        availabilityText =
+            vehicle.status ||
+            "Unavailable";
+
     }
 
-    // Availability
-    let availabilityText = "";
-    if (vehicle.status === "available") {
-        availabilityText = "Available";
-    } else if (vehicle.status === "booked") {
-        availabilityText = "Currently Booked";
-    } else if (vehicle.status === "maintenance") {
-        availabilityText = "Under Maintenance";
-    }
 
-    // Book button
-    let bookButton = "";
-    if (vehicle.status === "available") {
+    let bookButton =
+        "";
+
+
+    if (
+        normalizedStatus ===
+        "available"
+    ) {
+
         bookButton = `
+
             <button
                 class="btn vehicle-book-button"
-                onclick="bookVehicle(${vehicle.id})"
+                onclick="
+                    bookVehicle(
+                        ${Number(
+                            vehicle.id
+                        )}
+                    )
+                "
             >
                 Book Now
             </button>
+
         `;
+
     } else {
+
         bookButton = `
+
             <button
                 class="btn vehicle-book-button"
                 disabled
             >
                 Not Available
             </button>
+
         `;
+
     }
 
-    // =====================================
-    // COMPLETE HTML
-    // =====================================
+
     detailsContainer.innerHTML = `
-        <div class="vehicle-details-card">
-            <!-- =============================
-                IMAGE
-            ============================== -->
-            <div class="vehicle-details-image-container">
-                ${imageHTML}
+
+        <div
+            class="vehicle-details-card"
+        >
+
+
+            <!-- =================================
+                 VEHICLE PHOTO
+            ================================== -->
+
+            <div
+                class="
+                    vehicle-details-image-container
+                "
+            >
+
+                ${vehicleImageHTML(
+                    vehicle
+                )}
+
             </div>
 
-            <!-- =============================
-                INFORMATION
-            ============================== -->
-            <div class="vehicle-details-information">
-                <div class="vehicle-details-heading">
+
+            <!-- =================================
+                 INFORMATION
+            ================================== -->
+
+            <div
+                class="
+                    vehicle-details-information
+                "
+            >
+
+
+                <div
+                    class="
+                        vehicle-details-heading
+                    "
+                >
+
                     <div>
-                        <p class="vehicle-details-category">
-                            ${vehicle.brand}
+
+                        <p
+                            class="
+                                vehicle-details-category
+                            "
+                        >
+
+                            ${escapeHTML(
+                                vehicle.brand ||
+                                ""
+                            )}
+
                             •
-                            ${vehicle.category}
+
+                            ${escapeHTML(
+                                vehicle.category ||
+                                ""
+                            )}
+
                         </p>
+
+
                         <h1>
-                            ${vehicle.name}
+
+                            ${escapeHTML(
+                                vehicle.name ||
+                                "Vehicle"
+                            )}
+
                         </h1>
+
                     </div>
+
+
                     <span
                         class="
                             status
-                            status-${vehicle.status}
+                            status-${escapeHTML(
+                                normalizedStatus ||
+                                "unavailable"
+                            )}
                         "
                     >
-                        ${availabilityText}
+
+                        ${escapeHTML(
+                            availabilityText
+                        )}
+
                     </span>
+
                 </div>
 
-                <!-- Rating -->
-                <div class="vehicle-details-rating">
+
+                <!-- RATING -->
+
+                <div
+                    class="
+                        vehicle-details-rating
+                    "
+                >
+
                     <strong>
-                        ${vehicle.rating.toFixed(1)}
+
+                        ${Number(
+                            vehicle.rating ||
+                            0
+                        ).toFixed(1)}
+
                     </strong>
+
                     <span>
                         ★
                     </span>
+
                     <span>
                         Customer rating
                     </span>
+
                 </div>
 
-                <!-- Price -->
-                <div class="vehicle-details-price">
+
+                <!-- PRICE -->
+
+                <div
+                    class="
+                        vehicle-details-price
+                    "
+                >
+
                     <strong>
-                        ${money(vehicle.pricePerDay)}
+
+                        ${money(
+                            vehicle.pricePerDay ||
+                            0
+                        )}
+
                     </strong>
+
                     <span>
                         / day
                     </span>
+
                 </div>
 
-                <!-- =========================
-                    SPECIFICATIONS
-                ========================== -->
-                <div class="vehicle-details-specs">
-                    <div class="detail-spec">
-                        <span class="detail-spec-label">
+
+                <!-- SPECIFICATIONS -->
+
+                <div
+                    class="
+                        vehicle-details-specs
+                    "
+                >
+
+                    <div
+                        class="detail-spec"
+                    >
+
+                        <span
+                            class="
+                                detail-spec-label
+                            "
+                        >
                             Transmission
                         </span>
+
                         <strong>
-                            ${vehicle.transmission}
+
+                            ${escapeHTML(
+                                vehicle.transmission ||
+                                "N/A"
+                            )}
+
                         </strong>
+
                     </div>
 
-                    <div class="detail-spec">
-                        <span class="detail-spec-label">
+
+                    <div
+                        class="detail-spec"
+                    >
+
+                        <span
+                            class="
+                                detail-spec-label
+                            "
+                        >
                             Seats
                         </span>
+
                         <strong>
-                            ${vehicle.seats}
+
+                            ${escapeHTML(
+                                String(
+                                    vehicle.seats ||
+                                    0
+                                )
+                            )}
+
                         </strong>
+
                     </div>
 
-                    <div class="detail-spec">
-                        <span class="detail-spec-label">
+
+                    <div
+                        class="detail-spec"
+                    >
+
+                        <span
+                            class="
+                                detail-spec-label
+                            "
+                        >
                             Category
                         </span>
+
                         <strong>
-                            ${vehicle.category}
+
+                            ${escapeHTML(
+                                vehicle.category ||
+                                "-"
+                            )}
+
                         </strong>
+
                     </div>
 
-                    <div class="detail-spec">
-                        <span class="detail-spec-label">
+
+                    <div
+                        class="detail-spec"
+                    >
+
+                        <span
+                            class="
+                                detail-spec-label
+                            "
+                        >
                             Brand
                         </span>
+
                         <strong>
-                            ${vehicle.brand}
+
+                            ${escapeHTML(
+                                vehicle.brand ||
+                                "-"
+                            )}
+
                         </strong>
+
                     </div>
+
                 </div>
 
-                <!-- =========================
-                    DESCRIPTION
-                ========================== -->
-                <div class="vehicle-description">
+
+                <!-- DESCRIPTION -->
+
+                <div
+                    class="
+                        vehicle-description
+                    "
+                >
+
                     <h2>
                         About this vehicle
                     </h2>
+
                     <p>
+
                         Enjoy a comfortable and reliable
-                        journey with the ${vehicle.name}.
-                        This ${vehicle.category.toLowerCase()}
+                        journey with the
+
+                        ${escapeHTML(
+                            vehicle.name ||
+                            "vehicle"
+                        )}.
+
+                        This
+
+                        ${escapeHTML(
+                            (
+                                vehicle.category ||
+                                "vehicle"
+                            ).toLowerCase()
+                        )}
+
                         is available for rental through
                         Rento.
+
                     </p>
+
                 </div>
 
-                <!-- =========================
-                    BOOK
-                ========================== -->
-                <div class="vehicle-details-actions">
+
+                <!-- BOOK -->
+
+                <div
+                    class="
+                        vehicle-details-actions
+                    "
+                >
+
                     ${bookButton}
+
                 </div>
+
+
             </div>
+
         </div>
+
     `;
+
 }
 
-function bookVehicle(vehicleId) {
+function bookVehicle(
+    vehicleId
+) {
 
     window.location.href =
-        "booking.html?id=" + vehicleId;
+        "booking.html?id=" +
+        encodeURIComponent(
+            vehicleId
+        );
 
 }
+
+loadVehicle();

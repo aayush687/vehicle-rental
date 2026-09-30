@@ -1,18 +1,5 @@
-/* =========================================
-   ADMIN — MANAGE CUSTOMERS
 
-   There is no separate customer database yet,
-   so the customer list is built from everyone
-   who appears in the bookings, plus the saved
-   customer profile (if one exists). Once the
-   Java backend is ready this can be replaced
-   with a real /api/customers fetch().
-========================================= */
-
-
-/* =========================================
-   GET ELEMENTS
-========================================= */
+const API_URL = "http://localhost:8080/api/customers";
 
 const customersTableBody =
     document.getElementById("customers-table-body");
@@ -20,160 +7,129 @@ const customersTableBody =
 const customerSearchInput =
     document.getElementById("customer-search");
 
+let allCustomers = [];
 
-/* =========================================
-   GET BOOKINGS
-========================================= */
+let allBookings = [];
 
 function getBookings() {
 
-    const savedBookings =
-        JSON.parse(
-            localStorage.getItem("rentoBookings")
-        );
-
-    if (
-        savedBookings &&
-        Array.isArray(savedBookings)
-    ) {
-
-        return savedBookings;
-
-    }
-
-    if (typeof BOOKINGS !== "undefined") {
-
-        return BOOKINGS;
-
-    }
-
-    return [];
+    return allBookings;
 
 }
 
 
-/* =========================================
-   BUILD CUSTOMER LIST FROM BOOKINGS
-========================================= */
+async function loadCustomers() {
 
-function buildCustomerList() {
+    try {
 
-    const bookings =
-        getBookings();
+        const response = await fetch(API_URL);
 
-    const customerMap = {};
-
-
-    bookings.forEach(function (booking) {
-
-        const name =
-            booking.customer || "Unknown";
-
-        if (!customerMap[name]) {
-
-            customerMap[name] = {
-                name: name,
-                email: booking.email || "-",
-                phone: booking.phone || "-",
-                totalBookings: 0,
-                totalSpent: 0
-            };
-
+        if (!response.ok) {
+            throw new Error("Server error");
         }
 
-        customerMap[name].totalBookings += 1;
+        allCustomers = await response.json();
 
-        customerMap[name].totalSpent +=
-            Number(booking.total || 0);
+        // bookings are used for the booking counts and totals
+        const bookingsResponse =
+            await fetch("http://localhost:8080/api/bookings");
 
+        allBookings = bookingsResponse.ok
+            ? await bookingsResponse.json()
+            : [];
 
-        /* Fill in contact details if this
-           booking has them and an earlier
-           one for the same customer didn't. */
+    } catch (error) {
 
-        if (
-            booking.email &&
-            customerMap[name].email === "-"
-        ) {
+        customersTableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="admin-empty">
+                    Could not load customers. Is the backend running?
+                </td>
+            </tr>
+        `;
 
-            customerMap[name].email = booking.email;
+        return;
 
-        }
+    }
 
-        if (
-            booking.phone &&
-            customerMap[name].phone === "-"
-        ) {
+    renderCustomers();
 
-            customerMap[name].phone = booking.phone;
+}
 
-        }
+function getCustomerStats(customer) {
 
+    const customerBookings =
+        getBookings().filter(function (booking) {
+
+            if (booking.customerId) {
+                return booking.customerId === customer.id;
+            }
+
+            // fallback if a booking has no customerId
+            return booking.email &&
+                booking.email === customer.email;
+
+        });
+
+    let totalSpent = 0;
+
+    customerBookings.forEach(function (booking) {
+        totalSpent += Number(booking.total || 0);
     });
 
-
-    /* Include the saved customer profile too,
-       in case they haven't booked anything yet. */
-
-    const savedProfile =
-        JSON.parse(
-            localStorage.getItem("rentoCustomerProfile")
-        );
-
-    if (
-        savedProfile &&
-        !customerMap[savedProfile.name]
-    ) {
-
-        customerMap[savedProfile.name] = {
-            name: savedProfile.name,
-            email: savedProfile.email || "-",
-            phone: savedProfile.phone || "-",
-            totalBookings: 0,
-            totalSpent: 0
-        };
-
-    }
-
-
-    return Object.values(customerMap);
+    return {
+        totalBookings: customerBookings.length,
+        totalSpent: totalSpent
+    };
 
 }
 
-
-/* =========================================
-   RENDER CUSTOMERS TABLE
-========================================= */
-
 function renderCustomers() {
-
-    const customers =
-        buildCustomerList();
 
     const searchTerm =
         customerSearchInput.value
             .trim()
             .toLowerCase();
 
-    const filtered =
-        customers.filter(function (customer) {
+    const rows =
+        allCustomers
+            .map(function (customer) {
 
-            return (
-                !searchTerm ||
-                customer.name.toLowerCase().includes(searchTerm) ||
-                customer.email.toLowerCase().includes(searchTerm)
-            );
+                const stats = getCustomerStats(customer);
 
-        });
+                return {
+                    id: customer.id,
+                    name: customer.name || "Unknown",
+                    email: customer.email || "-",
+                    phone: customer.phone || "-",
+                    totalBookings: stats.totalBookings,
+                    totalSpent: stats.totalSpent
+                };
+
+            })
+            .filter(function (customer) {
+
+                return (
+                    !searchTerm ||
+                    customer.name.toLowerCase().includes(searchTerm) ||
+                    customer.email.toLowerCase().includes(searchTerm)
+                );
+
+            })
+            .sort(function (a, b) {
+
+                return b.totalBookings - a.totalBookings;
+
+            });
 
     customersTableBody.innerHTML = "";
 
 
-    if (filtered.length === 0) {
+    if (rows.length === 0) {
 
         customersTableBody.innerHTML = `
             <tr>
-                <td colspan="5" class="admin-empty">
+                <td colspan="6" class="admin-empty">
                     No customers found.
                 </td>
             </tr>
@@ -184,15 +140,7 @@ function renderCustomers() {
     }
 
 
-    const sorted =
-        [...filtered].sort(function (a, b) {
-
-            return b.totalBookings - a.totalBookings;
-
-        });
-
-
-    sorted.forEach(function (customer) {
+    rows.forEach(function (customer) {
 
         const row =
             document.createElement("tr");
@@ -219,6 +167,18 @@ function renderCustomers() {
 
             <td>Rs. ${customer.totalSpent.toLocaleString("en-IN")}</td>
 
+            <td>
+                <div class="admin-table-actions">
+
+                    <button
+                        class="admin-delete-btn"
+                        onclick="deleteCustomer(${customer.id})">
+                        Delete
+                    </button>
+
+                </div>
+            </td>
+
         `;
 
         customersTableBody.appendChild(row);
@@ -227,10 +187,52 @@ function renderCustomers() {
 
 }
 
+async function deleteCustomer(id) {
 
-/* =========================================
-   GET INITIALS
-========================================= */
+    const customer =
+        allCustomers.find(function (item) {
+            return item.id === id;
+        });
+
+    if (!customer) {
+        return;
+    }
+
+    const confirmDelete =
+        confirm(
+            "Delete " + customer.name + "?\n\n" +
+            "This also deletes all of their bookings " +
+            "and payments. This cannot be undone."
+        );
+
+    if (!confirmDelete) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            API_URL + "/" + id,
+            { method: "DELETE" }
+        );
+
+        if (!response.ok) {
+            showToast("Could not delete the customer.");
+            return;
+        }
+
+    } catch (error) {
+
+        showToast("Cannot reach the server. Is the backend running?");
+        return;
+
+    }
+
+    showToast("Customer deleted.");
+
+    loadCustomers();
+
+}
 
 function getInitials(name) {
 
@@ -252,11 +254,6 @@ function getInitials(name) {
 
 }
 
-
-/* =========================================
-   ESCAPE HTML
-========================================= */
-
 function escapeHTML(value) {
 
     return String(value)
@@ -268,16 +265,7 @@ function escapeHTML(value) {
 
 }
 
-
-/* =========================================
-   EVENT LISTENERS
-========================================= */
-
 customerSearchInput.addEventListener("input", renderCustomers);
 
 
-/* =========================================
-   INITIAL LOAD
-========================================= */
-
-renderCustomers();
+loadCustomers();

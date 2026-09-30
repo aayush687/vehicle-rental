@@ -1,176 +1,320 @@
-// =========================================
-// CUSTOMER BOOKING PAGE
-// =========================================
+const API_BASE =
+    "http://localhost:8080/api";
 
 
-// =========================================
-// GET VEHICLE ID
-// =========================================
-
-const urlParams = new URLSearchParams(
-    window.location.search
-);
-
-const vehicleId = Number(
-    urlParams.get("id")
-);
+const urlParams =
+    new URLSearchParams(
+        window.location.search
+    );
 
 
-// =========================================
-// GET VEHICLES
-// (same pattern used elsewhere: prefer whatever
-//  admin has saved in localStorage, and only fall
-//  back to the sample VEHICLES from data.js)
-// =========================================
+const vehicleId =
+    Number(
+        urlParams.get("id")
+    );
 
-function getVehicles() {
 
-    const savedVehicles =
-        JSON.parse(
-            localStorage.getItem("rentoVehicles")
-        );
+let currentCustomer =
+    null;
 
-    if (
-        savedVehicles &&
-        Array.isArray(savedVehicles)
-    ) {
 
-        return savedVehicles;
+requireCustomerLogin().then(
+    function (user) {
+
+        currentCustomer =
+            user;
 
     }
+);
 
-    if (typeof VEHICLES !== "undefined") {
-
-        return VEHICLES;
-
-    }
-
-    return [];
-
-}
-
-
-// =========================================
-// FIND VEHICLE
-// =========================================
-
-const vehicle = getVehicles().find(function (vehicle) {
-
-    return vehicle.id === vehicleId;
-
-});
-
-
-// =========================================
-// GET ELEMENTS
-// =========================================
 
 const selectedVehicle =
-    document.getElementById("selected-vehicle");
+    document.getElementById(
+        "selected-vehicle"
+    );
+
 
 const bookingSummary =
-    document.getElementById("booking-summary");
+    document.getElementById(
+        "booking-summary"
+    );
+
 
 const pickupDate =
-    document.getElementById("pickup-date");
+    document.getElementById(
+        "pickup-date"
+    );
+
 
 const returnDate =
-    document.getElementById("return-date");
+    document.getElementById(
+        "return-date"
+    );
+
 
 const pickupLocation =
-    document.getElementById("pickup-location");
+    document.getElementById(
+        "pickup-location"
+    );
+
 
 const specialRequest =
-    document.getElementById("special-request");
+    document.getElementById(
+        "special-request"
+    );
+
 
 const customerName =
-    document.getElementById("customer-name");
+    document.getElementById(
+        "customer-name"
+    );
+
 
 const customerPhone =
-    document.getElementById("customer-phone");
+    document.getElementById(
+        "customer-phone"
+    );
+
 
 const customerEmail =
-    document.getElementById("customer-email");
+    document.getElementById(
+        "customer-email"
+    );
+
 
 const bookingError =
-    document.getElementById("booking-error");
+    document.getElementById(
+        "booking-error"
+    );
+
 
 const confirmButton =
-    document.getElementById("confirm-booking");
+    document.getElementById(
+        "confirm-booking"
+    );
 
 
-// =========================================
-// CHECK VEHICLE
-// =========================================
+let vehicle =
+    null;
 
-if (!vehicle) {
+function getVehicleImageSource(
+    image
+) {
 
-    selectedVehicle.innerHTML = `
+    if (!image) {
 
-        <div class="booking-not-found">
+        return "";
 
-            <h3>
-                Vehicle not found
-            </h3>
+    }
 
-            <p>
-                Please return to the vehicle list
-                and select a vehicle.
-            </p>
 
-            <a
-                href="browse-vehicles.html"
-                class="btn"
-            >
-                Browse Vehicles
-            </a>
+    /*
+       Base64 image
+    */
 
-        </div>
+    if (
+        image.startsWith(
+            "data:image/"
+        )
+    ) {
 
-    `;
+        return image;
 
-    confirmButton.disabled = true;
+    }
 
-} else {
 
-    displaySelectedVehicle();
+    /*
+       Full URL
+    */
 
-    displaySummary();
+    if (
+        image.startsWith(
+            "http://"
+        ) ||
+        image.startsWith(
+            "https://"
+        )
+    ) {
+
+        return image;
+
+    }
+
+
+    /*
+       Local image
+    */
+
+    return (
+        "../public/" +
+        image.replace(
+            /^\/+/,
+            ""
+        )
+    );
 
 }
 
+async function loadVehicle() {
 
-// =========================================
-// DISPLAY SELECTED VEHICLE
-// =========================================
+    try {
+
+        const response =
+            await fetch(
+                `${API_BASE}/vehicles/${vehicleId}`
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Vehicle not found"
+            );
+
+        }
+
+
+        vehicle =
+            await response.json();
+
+
+        displaySelectedVehicle();
+
+        displaySummary();
+
+
+    } catch (error) {
+
+        console.error(
+            "Error loading vehicle:",
+            error
+        );
+
+
+        selectedVehicle.innerHTML = `
+
+            <div
+                class="booking-not-found"
+            >
+
+                <h3>
+                    Vehicle not found
+                </h3>
+
+                <p>
+                    Please return to the vehicle list
+                    and select a vehicle.
+                </p>
+
+                <a
+                    href="browse-vehicles.html"
+                    class="btn"
+                >
+                    Browse Vehicles
+                </a>
+
+            </div>
+
+        `;
+
+
+        confirmButton.disabled =
+            true;
+
+    }
+
+}
 
 function displaySelectedVehicle() {
 
-    selectedVehicle.innerHTML = `
+    const imageSource =
+        getVehicleImageSource(
+            vehicle.image
+        );
 
-        <div class="selected-vehicle-image">
+
+    let imageHTML;
+
+
+    if (imageSource) {
+
+        imageHTML = `
 
             <img
-                src="../public/${vehicle.image}"
-                alt="${vehicle.name}"
+                src="${imageSource}"
+                alt="${escapeHTML(
+                    vehicle.name ||
+                    "Vehicle"
+                )}"
+                onerror="
+                    this.style.display='none';
+                    this.parentElement.innerHTML='🚗';
+                "
             >
+
+        `;
+
+    } else {
+
+        imageHTML =
+            "🚗";
+
+    }
+
+
+    selectedVehicle.innerHTML = `
+
+        <div
+            class="selected-vehicle-image"
+        >
+
+            ${imageHTML}
 
         </div>
 
 
-        <div class="selected-vehicle-info">
+        <div
+            class="selected-vehicle-info"
+        >
 
             <span>
-                ${vehicle.brand} • ${vehicle.category}
+
+                ${escapeHTML(
+                    vehicle.brand ||
+                    ""
+                )}
+
+                •
+
+                ${escapeHTML(
+                    vehicle.category ||
+                    ""
+                )}
+
             </span>
 
+
             <h3>
-                ${vehicle.name}
+
+                ${escapeHTML(
+                    vehicle.name ||
+                    "Vehicle"
+                )}
+
             </h3>
 
+
             <strong>
-                ${money(vehicle.pricePerDay)}
-                <small>/ day</small>
+
+                ${money(
+                    vehicle.pricePerDay ||
+                    0
+                )}
+
+                <small>
+                    / day
+                </small>
+
             </strong>
 
         </div>
@@ -179,41 +323,51 @@ function displaySelectedVehicle() {
 
 }
 
-
-// =========================================
-// SET MINIMUM DATE
-// =========================================
-
 function getToday() {
 
-    const today = new Date();
+    const today =
+        new Date();
+
 
     const year =
         today.getFullYear();
 
+
     const month =
-        String(today.getMonth() + 1)
-        .padStart(2, "0");
+        String(
+            today.getMonth() + 1
+        ).padStart(
+            2,
+            "0"
+        );
+
 
     const day =
-        String(today.getDate())
-        .padStart(2, "0");
+        String(
+            today.getDate()
+        ).padStart(
+            2,
+            "0"
+        );
 
-    return `${year}-${month}-${day}`;
+
+    return (
+        `${year}-${month}-${day}`
+    );
 
 }
 
 
-const today = getToday();
-
-pickupDate.min = today;
-
-returnDate.min = today;
+const today =
+    getToday();
 
 
-// =========================================
-// CALCULATE RENTAL DAYS
-// =========================================
+pickupDate.min =
+    today;
+
+
+returnDate.min =
+    today;
 
 function calculateDays() {
 
@@ -228,10 +382,15 @@ function calculateDays() {
 
 
     const start =
-        new Date(pickupDate.value);
+        new Date(
+            pickupDate.value
+        );
+
 
     const end =
-        new Date(returnDate.value);
+        new Date(
+            returnDate.value
+        );
 
 
     const difference =
@@ -240,22 +399,24 @@ function calculateDays() {
 
     const days =
         difference /
-        (1000 * 60 * 60 * 24);
+        (
+            1000 *
+            60 *
+            60 *
+            24
+        );
 
 
     return days;
 
 }
 
-
-// =========================================
-// DISPLAY PRICE SUMMARY
-// =========================================
-
 function displaySummary() {
 
     if (!vehicle) {
+
         return;
+
     }
 
 
@@ -263,54 +424,65 @@ function displaySummary() {
         calculateDays();
 
 
-    let rentalDays = days;
-
-
-    if (days > 0) {
-
-        rentalDays = days;
-
-    } else {
-
-        rentalDays = 0;
-
-    }
+    const rentalDays =
+        days > 0
+            ? days
+            : 0;
 
 
     const subtotal =
         rentalDays *
-        vehicle.pricePerDay;
+        Number(
+            vehicle.pricePerDay ||
+            0
+        );
 
 
     bookingSummary.innerHTML = `
 
-        <div class="summary-vehicle">
+        <div
+            class="summary-vehicle"
+        >
 
             <span>
                 Vehicle
             </span>
 
             <strong>
-                ${vehicle.name}
+
+                ${escapeHTML(
+                    vehicle.name ||
+                    "Vehicle"
+                )}
+
             </strong>
 
         </div>
 
 
-        <div class="summary-row">
+        <div
+            class="summary-row"
+        >
 
             <span>
                 Price per day
             </span>
 
             <span>
-                ${money(vehicle.pricePerDay)}
+
+                ${money(
+                    vehicle.pricePerDay ||
+                    0
+                )}
+
             </span>
 
         </div>
 
 
-        <div class="summary-row">
+        <div
+            class="summary-row"
+        >
 
             <span>
                 Rental days
@@ -323,39 +495,47 @@ function displaySummary() {
         </div>
 
 
-        <div class="summary-divider"></div>
+        <div
+            class="summary-divider"
+        ></div>
 
 
-        <div class="summary-total">
+        <div
+            class="summary-total"
+        >
 
             <span>
                 Total
             </span>
 
             <strong>
-                ${money(subtotal)}
+
+                ${money(
+                    subtotal
+                )}
+
             </strong>
 
         </div>
 
 
-        <p class="summary-note">
+        <p
+            class="summary-note"
+        >
+
             Final price may include additional
             charges depending on the booking.
+
         </p>
 
     `;
 
 }
 
-
-// =========================================
-// DATE VALIDATION
-// =========================================
-
 function validateDates() {
 
-    bookingError.textContent = "";
+    bookingError.textContent =
+        "";
 
 
     if (!pickupDate.value) {
@@ -396,11 +576,6 @@ function validateDates() {
 
 }
 
-
-// =========================================
-// UPDATE RETURN DATE MINIMUM
-// =========================================
-
 pickupDate.addEventListener(
     "change",
     function () {
@@ -411,10 +586,12 @@ pickupDate.addEventListener(
 
         if (
             returnDate.value &&
-            returnDate.value <= pickupDate.value
+            returnDate.value <=
+                pickupDate.value
         ) {
 
-            returnDate.value = "";
+            returnDate.value =
+                "";
 
         }
 
@@ -423,7 +600,6 @@ pickupDate.addEventListener(
 
     }
 );
-
 
 returnDate.addEventListener(
     "change",
@@ -434,19 +610,13 @@ returnDate.addEventListener(
     }
 );
 
-
-// =========================================
-// CONFIRM BOOKING
-// =========================================
-
 confirmButton.addEventListener(
     "click",
-    function () {
+    async function () {
 
-        bookingError.textContent = "";
+        bookingError.textContent =
+            "";
 
-
-        // Validate dates
 
         if (!validateDates()) {
 
@@ -454,8 +624,6 @@ confirmButton.addEventListener(
 
         }
 
-
-        // Validate location
 
         if (!pickupLocation.value) {
 
@@ -467,9 +635,9 @@ confirmButton.addEventListener(
         }
 
 
-        // Validate phone
-
-        if (!customerPhone.value.trim()) {
+        if (
+            !customerPhone.value.trim()
+        ) {
 
             bookingError.textContent =
                 "Please enter your phone number.";
@@ -481,9 +649,9 @@ confirmButton.addEventListener(
         }
 
 
-        // Validate email
-
-        if (!customerEmail.value.trim()) {
+        if (
+            !customerEmail.value.trim()
+        ) {
 
             bookingError.textContent =
                 "Please enter your email.";
@@ -495,71 +663,179 @@ confirmButton.addEventListener(
         }
 
 
-        // Calculate total
-
         const days =
             calculateDays();
 
+
         const total =
             days *
-            vehicle.pricePerDay;
+            Number(
+                vehicle.pricePerDay ||
+                0
+            );
 
 
-        // Create booking object
+        confirmButton.disabled =
+            true;
+
+
+        confirmButton.textContent =
+            "Creating Booking...";
+
 
         const newBooking = {
-    id: Date.now(),
 
-    customer: customerName.value.trim(),
+            customerId:
+                currentCustomer
+                    ? currentCustomer.id
+                    : 0,
 
-    phone: customerPhone.value.trim(),
+            customer:
+                customerName.value.trim(),
 
-    email: customerEmail.value.trim(),
+            phone:
+                customerPhone.value.trim(),
 
-    vehicle: vehicle.name,
+            email:
+                customerEmail.value.trim(),
 
-    vehicleId: vehicle.id,
+            vehicle:
+                vehicle.name,
 
-    start: pickupDate.value,
+            vehicleId:
+                vehicle.id,
 
-    end: returnDate.value,
+            start:
+                pickupDate.value,
 
-    location: pickupLocation.value,
+            end:
+                returnDate.value,
 
-    specialRequest: specialRequest.value.trim(),
+            location:
+                pickupLocation.value,
 
-    total: total,
+            specialRequest:
+                specialRequest.value.trim(),
 
-    status: "pending"
-};
+            total:
+                total,
 
+            status:
+                "pending"
 
-        // =====================================
-        // SAVE BOOKING
-        // =====================================
-
-        let savedBookings =
-            JSON.parse(
-                localStorage.getItem("rentoBookings")
-            ) || [];
-
-
-        savedBookings.push(newBooking);
-
-
-        localStorage.setItem(
-            "rentoBookings",
-            JSON.stringify(savedBookings)
-        );
+        };
 
 
-        // =====================================
-        // GO TO CONFIRMATION
-        // =====================================
+        try {
 
-        window.location.href =
-            "booking-confirmation.html?id=" +
-            newBooking.id;
+            const response =
+                await fetch(
+                    `${API_BASE}/bookings`,
+                    {
+
+                        method:
+                            "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        body:
+                            JSON.stringify(
+                                newBooking
+                            )
+
+                    }
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Failed to create booking."
+                );
+
+            }
+
+
+            const savedBooking =
+                await response.json();
+
+
+            if (!savedBooking) {
+
+                throw new Error(
+                    "Booking was not saved."
+                );
+
+            }
+
+
+            window.location.href =
+                "booking-confirmation.html?id=" +
+                savedBooking.id;
+
+
+        } catch (error) {
+
+            console.error(
+                "Booking error:",
+                error
+            );
+
+
+            bookingError.textContent =
+                "Could not create booking. " +
+                "Please make sure the backend is running.";
+
+
+            confirmButton.disabled =
+                false;
+
+
+            confirmButton.textContent =
+                "Confirm Booking";
+
+        }
 
     }
 );
+
+function escapeHTML(value) {
+
+    return String(
+        value
+    )
+
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+
+        .replace(
+            /</g,
+            "&lt;"
+        )
+
+        .replace(
+            />/g,
+            "&gt;"
+        )
+
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+loadVehicle();

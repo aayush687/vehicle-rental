@@ -1,7 +1,5 @@
 -- Vehicle Rental Management System
--- Simple bachelor-level database
-
-CREATE DATABASE IF NOT EXISTS vehicle_rental;
+CREATE DATABASE vehicle_rental;
 USE vehicle_rental;
 
 CREATE TABLE admin (
@@ -71,3 +69,6 @@ VALUES
 ('Honda Civic', 'Car', 60, 'Available'),
 ('Yamaha R15', 'Bike', 25, 'Available'),
 ('Toyota Hilux', 'SUV', 80, 'Available');
+
+SHOW TABLES;
+SELECT * FROM vehicle;

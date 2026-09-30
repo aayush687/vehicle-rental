@@ -1,173 +1,396 @@
-const vehicleList = document.getElementById("vehicle-list");
-const vehicleCount = document.getElementById("vehicle-count");
-const searchCategory = document.getElementById("search-category");
-const searchBrand = document.getElementById("search-brand");
+let vehicles = [];
+
+const vehicleList =
+    document.getElementById("vehicle-list");
+
+const vehicleCount =
+    document.getElementById("vehicle-count");
+
+const searchCategory =
+    document.getElementById("search-category");
+
+const searchBrand =
+    document.getElementById("search-brand");
+
 const searchTransmission =
     document.getElementById("search-transmission");
+
 const searchStatus =
     document.getElementById("search-status");
+
 const searchBtn =
     document.getElementById("search-btn");
 
-let vehicles = [];
 
-// Load vehicles from Java backend
-async function loadVehicles() {
+// =========================================
+// GET VEHICLES FROM SPRING BOOT
+// =========================================
+
+async function getVehicles() {
 
     try {
 
         const response =
-            await fetch("http://localhost:8080/api/vehicles");
+            await fetch(
+                "http://localhost:8080/api/vehicles"
+            );
 
         if (!response.ok) {
-            throw new Error("Could not load vehicles");
+
+            throw new Error(
+                "Failed to load vehicles"
+            );
         }
 
-        const data = await response.json();
+        vehicles =
+            await response.json();
 
-        // Convert backend data to the format used by this page
-        vehicles = data.map(function (vehicle) {
+        console.log(
+            "Vehicles:",
+            vehicles
+        );
 
-            return {
-                id: vehicle.id,
-                name: vehicle.name,
-                category: vehicle.category,
-                pricePerDay: vehicle.pricePerDay,
-                status: vehicle.status.toLowerCase(),
+        return vehicles;
 
-                // These fields are not in our simple database
-                brand: "",
-                transmission: "",
-                seats: 0,
-                rating: 0
-            };
-        });
+    }
+    catch (error) {
 
-        loadCategories();
-        loadBrands();
+        console.error(
+            "Error loading vehicles:",
+            error
+        );
 
-        renderVehicles(vehicles);
+        if (
+            typeof showToast ===
+            "function"
+        ) {
 
-    } catch (error) {
+            showToast(
+                "Unable to load vehicles."
+            );
+        }
 
-        console.error("Error loading vehicles:", error);
-
-        vehicleList.innerHTML = `
-            <div class="no-results">
-                <div class="no-results-icon">
-                    🚗
-                </div>
-                <h3>
-                    Could not load vehicles
-                </h3>
-                <p>
-                    Please make sure the backend is running.
-                </p>
-            </div>
-        `;
+        return [];
     }
 }
 
 
-// Load categories from database vehicles
-function loadCategories() {
+// =========================================
+// LOAD BRANDS
+// =========================================
 
-    const categories = [];
+function loadBrands(vehicleData) {
 
-    vehicles.forEach(function (vehicle) {
+    const brands = [];
 
-        if (
-            vehicle.category &&
-            !categories.includes(vehicle.category)
-        ) {
-            categories.push(vehicle.category);
+
+    vehicleData.forEach(
+        function (vehicle) {
+
+            if (
+                vehicle.brand &&
+                !brands.includes(
+                    vehicle.brand
+                )
+            ) {
+
+                brands.push(
+                    vehicle.brand
+                );
+
+            }
+
         }
-    });
+    );
 
-    categories.sort();
 
-    categories.forEach(function (category) {
+    brands.sort();
 
-        const option =
-            document.createElement("option");
 
-        option.value = category;
-        option.textContent = category;
+    searchBrand.innerHTML =
+        '<option value="all">All Brands</option>';
 
-        searchCategory.appendChild(option);
-    });
+
+    brands.forEach(
+        function (brand) {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value =
+                brand;
+
+            option.textContent =
+                brand;
+
+            searchBrand.appendChild(
+                option
+            );
+
+        }
+    );
 }
 
 
-// Load brands
-// The simple database does not currently contain brands
-function loadBrands() {
+// =========================================
+// VEHICLE IMAGE SOURCE
+// =========================================
 
-    searchBrand.innerHTML = `
-        <option value="all">All Brands</option>
+function getVehicleImageSource(image) {
+
+    if (!image) {
+        return "";
+    }
+
+    image =
+        String(image).trim();
+
+
+    if (!image) {
+        return "";
+    }
+
+
+    // Base64 image
+    if (
+        image.startsWith(
+            "data:image/"
+        )
+    ) {
+
+        return image;
+    }
+
+
+    // Full image URL
+    if (
+        image.startsWith(
+            "http://"
+        )
+        ||
+        image.startsWith(
+            "https://"
+        )
+    ) {
+
+        return image;
+    }
+
+
+    // Local image path
+    return image.replace(
+        /^\/+/,
+        ""
+    );
+}
+
+
+// =========================================
+// VEHICLE PHOTO
+// =========================================
+
+function vehiclePictureHTML(vehicle) {
+
+    const imageSource =
+        getVehicleImageSource(
+            vehicle &&
+            vehicle.image
+        );
+
+
+    if (imageSource) {
+
+        return `
+            <div class="public-browse-vehicle-image">
+
+                <img
+                    src="${escapeHTML(
+                        imageSource
+                    )}"
+                    alt="${escapeHTML(
+                        (vehicle &&
+                         vehicle.name)
+                        ||
+                        "Vehicle"
+                    )}"
+                    loading="lazy"
+                >
+
+            </div>
+        `;
+    }
+
+
+    // No image
+    return `
+        <div
+            class="
+                public-browse-vehicle-image
+                public-browse-no-image
+            "
+        >
+            🚗
+        </div>
     `;
 }
 
 
-// Create vehicle card
+// =========================================
+// VEHICLE CARD
+// =========================================
+
 function vehicleCardHTML(vehicle) {
 
+    const status =
+        String(
+            vehicle.status ||
+            ""
+        ).toLowerCase();
+
+
     const canBook =
-        vehicle.status === "available";
+        status === "available";
+
 
     let statusText = "";
 
-    if (vehicle.status === "available") {
 
-        statusText = "Available";
+    if (
+        status === "available"
+    ) {
 
-    } else if (vehicle.status === "booked") {
+        statusText =
+            "Available";
 
-        statusText = "Currently booked";
+    }
+    else if (
+        status === "booked"
+    ) {
 
-    } else if (vehicle.status === "maintenance") {
+        statusText =
+            "Currently booked";
 
-        statusText = "Under maintenance";
+    }
+    else if (
+        status === "maintenance"
+    ) {
 
-    } else {
+        statusText =
+            "Under maintenance";
 
-        statusText = vehicle.status;
+    }
+    else {
+
+        statusText =
+            vehicle.status ||
+            "Unknown";
     }
 
+
+    const rating =
+        Number(
+            vehicle.rating ||
+            0
+        ).toFixed(1);
+
+
+    const seats =
+        vehicle.seats ||
+        0;
+
+
+    const transmission =
+        vehicle.transmission ||
+        "N/A";
+
+
     return `
+
         <div class="vehicle-card">
 
-            ${typeof vehiclePictureHTML === "function"
-                ? vehiclePictureHTML(
-                    vehicle,
-                    "browse-vehicle-icon"
-                )
-                : `
-                    <div class="browse-vehicle-icon">
-                        🚗
-                    </div>
-                `
-            }
+
+            <!-- VEHICLE PHOTO -->
+
+            ${vehiclePictureHTML(
+                vehicle
+            )}
+
+
+            <!-- VEHICLE NAME -->
 
             <h3>
-                ${vehicle.name}
+
+                ${escapeHTML(
+                    vehicle.name ||
+                    "Vehicle"
+                )}
+
             </h3>
 
+
+            <!-- BRAND / CATEGORY -->
+
             <p class="vehicle-subtitle">
-                ${vehicle.category}
+
+                ${escapeHTML(
+                    vehicle.brand ||
+                    "Unknown"
+                )}
+
+                •
+
+                ${escapeHTML(
+                    vehicle.category ||
+                    "Unknown"
+                )}
+
             </p>
+
+
+            <!-- SPECIFICATIONS -->
 
             <div class="vehicle-specs">
 
                 <span>
-                    🚗 ${vehicle.category}
+
+                    ⚙️
+
+                    ${escapeHTML(
+                        transmission
+                    )}
+
+                </span>
+
+
+                <span>
+
+                    👤
+
+                    ${seats} seats
+
+                </span>
+
+
+                <span>
+
+                    ⭐
+
+                    ${rating}
+
                 </span>
 
             </div>
 
+
+            <!-- PRICE -->
+
             <div class="price">
 
-                ${money(vehicle.pricePerDay)}
+                ${money(
+                    vehicle.pricePerDay
+                )}
 
                 <span class="price-small">
                     / day
@@ -175,50 +398,97 @@ function vehicleCardHTML(vehicle) {
 
             </div>
 
+
+            <!-- STATUS -->
+
             <div class="vehicle-status">
 
-                <span class="status status-${vehicle.status}">
-                    ${statusText}
+                <span
+                    class="status status-${escapeHTML(
+                        status
+                    )}"
+                >
+
+                    ${escapeHTML(
+                        statusText
+                    )}
+
                 </span>
 
             </div>
 
+
+            <!-- BUTTONS -->
+
             <div class="vehicle-actions">
+
 
                 <button
                     class="btn btn-secondary"
-                    onclick="viewVehicle(${vehicle.id})">
+                    onclick="viewVehicle(${Number(
+                        vehicle.id
+                    )})"
+                >
+
                     View Details
+
                 </button>
+
 
                 <button
                     class="btn"
-                    onclick="bookVehicle(${vehicle.id})"
-                    ${canBook ? "" : "disabled"}>
-                    ${canBook ? "Book Now" : "Unavailable"}
+                    onclick="bookVehicle(${Number(
+                        vehicle.id
+                    )})"
+                    ${canBook
+                        ? ""
+                        : "disabled"}
+                >
+
+                    ${
+                        canBook
+                            ? "Book Now"
+                            : "Unavailable"
+                    }
+
                 </button>
+
 
             </div>
 
         </div>
+
     `;
 }
 
 
-// Display vehicles
-function renderVehicles(vehicleArray) {
+// =========================================
+// RENDER VEHICLES
+// =========================================
 
-    vehicleList.innerHTML = "";
+function renderVehicles(vehicleData) {
+
+    vehicleList.innerHTML =
+        "";
+
 
     vehicleCount.textContent =
-        vehicleArray.length +
-        (vehicleArray.length === 1
-            ? " vehicle"
-            : " vehicles");
 
-    if (vehicleArray.length === 0) {
+        vehicleData.length +
+
+        (
+            vehicleData.length === 1
+                ? " vehicle"
+                : " vehicles"
+        );
+
+
+    if (
+        vehicleData.length === 0
+    ) {
 
         vehicleList.innerHTML = `
+
             <div class="no-results">
 
                 <div class="no-results-icon">
@@ -230,126 +500,310 @@ function renderVehicles(vehicleArray) {
                 </h3>
 
                 <p>
-                    Try changing your search filters.
+                    Try changing your
+                    search filters.
                 </p>
 
             </div>
+
         `;
 
         return;
     }
 
-    vehicleArray.forEach(function (vehicle) {
 
-        vehicleList.innerHTML +=
-            vehicleCardHTML(vehicle);
+    vehicleData.forEach(
+        function (vehicle) {
 
-    });
+            vehicleList.innerHTML +=
+                vehicleCardHTML(
+                    vehicle
+                );
+
+        }
+    );
 }
 
 
-// Search and filter vehicles
-function searchVehicles() {
+// =========================================
+// SEARCH VEHICLES
+// =========================================
+
+async function searchVehicles() {
 
     const category =
         searchCategory.value;
 
+
     const brand =
         searchBrand.value;
+
 
     const transmission =
         searchTransmission.value;
 
+
     const status =
         searchStatus.value;
 
+
+    const allVehicles =
+        await getVehicles();
+
+
     const filteredVehicles =
-        vehicles.filter(function (vehicle) {
+        allVehicles.filter(
+            function (vehicle) {
 
-            // Category filter
-            if (
-                category !== "all" &&
-                vehicle.category !== category
-            ) {
-                return false;
+
+                if (
+                    category !== "all"
+                    &&
+                    vehicle.category !==
+                    category
+                ) {
+
+                    return false;
+                }
+
+
+                if (
+                    brand !== "all"
+                    &&
+                    vehicle.brand !==
+                    brand
+                ) {
+
+                    return false;
+                }
+
+
+                if (
+                    transmission !== "all"
+                    &&
+                    vehicle.transmission !==
+                    transmission
+                ) {
+
+                    return false;
+                }
+
+
+                if (
+                    status !== "all"
+                    &&
+                    String(
+                        vehicle.status ||
+                        ""
+                    ).toLowerCase()
+                    !==
+                    String(
+                        status
+                    ).toLowerCase()
+                ) {
+
+                    return false;
+                }
+
+
+                return true;
+
             }
+        );
 
-            // Brand filter
-            if (
-                brand !== "all" &&
-                vehicle.brand !== brand
-            ) {
-                return false;
-            }
 
-            // Transmission filter
-            if (
-                transmission !== "all" &&
-                vehicle.transmission !== transmission
-            ) {
-                return false;
-            }
-
-            // Status filter
-            if (
-                status !== "all" &&
-                vehicle.status !== status
-            ) {
-                return false;
-            }
-
-            return true;
-        });
-
-    renderVehicles(filteredVehicles);
+    renderVehicles(
+        filteredVehicles
+    );
 }
 
 
-// View vehicle details
+// =========================================
+// VIEW VEHICLE
+// =========================================
+
 function viewVehicle(vehicleId) {
 
-    window.location.href =
-        "vehicle-details.html?id=" + vehicleId;
-}
-
-
-// Book vehicle
-function bookVehicle(vehicleId) {
-
     const vehicle =
-        vehicles.find(function (vehicle) {
+        vehicles.find(
+            function (vehicle) {
 
-            return vehicle.id ===
-                Number(vehicleId);
+                return Number(
+                    vehicle.id
+                )
+                ===
+                Number(
+                    vehicleId
+                );
 
-        });
+            }
+        );
+
 
     if (!vehicle) {
-        return;
-    }
 
-    if (vehicle.status !== "available") {
+        if (
+            typeof showToast ===
+            "function"
+        ) {
 
-        if (typeof showToast === "function") {
             showToast(
-                "This vehicle is currently unavailable."
+                "Vehicle not found."
             );
+
         }
 
         return;
     }
 
+
     window.location.href =
-        "login.html?vehicle=" + vehicleId;
+        "../customer/vehicle-details.html?id=" +
+        vehicleId;
 }
 
 
-// Search button
-searchBtn.addEventListener(
-    "click",
-    searchVehicles
-);
+// =========================================
+// BOOK VEHICLE
+// =========================================
+
+function bookVehicle(vehicleId) {
+
+    const vehicle =
+        vehicles.find(
+            function (vehicle) {
+
+                return Number(
+                    vehicle.id
+                )
+                ===
+                Number(
+                    vehicleId
+                );
+
+            }
+        );
 
 
-// Load vehicles when page opens
-loadVehicles();
+    if (!vehicle) {
+        return;
+    }
+
+
+    const status =
+        String(
+            vehicle.status ||
+            ""
+        ).toLowerCase();
+
+
+    if (
+        status !== "available"
+    ) {
+
+        if (
+            typeof showToast ===
+            "function"
+        ) {
+
+            showToast(
+                "This vehicle is currently unavailable."
+            );
+
+        }
+
+        return;
+    }
+
+
+    window.location.href =
+        "login.html?vehicle=" +
+        encodeURIComponent(
+            vehicleId
+        );
+}
+
+
+// =========================================
+// SEARCH BUTTON
+// =========================================
+
+if (searchBtn) {
+
+    searchBtn.addEventListener(
+        "click",
+        searchVehicles
+    );
+}
+
+
+// =========================================
+// MONEY
+// =========================================
+
+function money(value) {
+
+    return "Rs. " +
+        Number(
+            value || 0
+        ).toLocaleString();
+}
+
+
+// =========================================
+// ESCAPE HTML
+// =========================================
+
+function escapeHTML(value) {
+
+    return String(value)
+
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+
+        .replace(
+            /</g,
+            "&lt;"
+        )
+
+        .replace(
+            />/g,
+            "&gt;"
+        )
+
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+}
+
+
+// =========================================
+// INITIALIZE
+// =========================================
+
+async function initializeVehicles() {
+
+    const allVehicles =
+        await getVehicles();
+
+
+    loadBrands(
+        allVehicles
+    );
+
+
+    renderVehicles(
+        allVehicles
+    );
+}
+
+
+initializeVehicles();

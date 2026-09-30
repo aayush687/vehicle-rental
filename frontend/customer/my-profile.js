@@ -1,172 +1,132 @@
-// =========================================
-// CUSTOMER PROFILE
-// =========================================
+const PROFILE_API = "http://localhost:8080/api";
 
+async function loadProfile() {
 
-// =========================================
-// DEFAULT CUSTOMER INFORMATION
-// =========================================
+    const customerProfile = await requireCustomerLogin();
 
-const DEFAULT_CUSTOMER = {
+    if (!customerProfile) {
+        return;
+    }
 
-    name: "Ram Thapa",
-
-    email: "ram@gmail.com",
-
-    phone: "9876543210"
-
-};
-
-
-// =========================================
-// GET SAVED PROFILE
-// =========================================
-
-let customerProfile =
-    JSON.parse(
-        localStorage.getItem("rentoCustomerProfile")
+    setText(
+        "profile-name",
+        customerProfile.name || "Customer"
     );
 
-
-// If no profile has been saved yet,
-// create the default demo profile.
-
-if (!customerProfile) {
-
-    customerProfile = {
-        ...DEFAULT_CUSTOMER
-    };
-
-    localStorage.setItem(
-        "rentoCustomerProfile",
-        JSON.stringify(customerProfile)
+    setText(
+        "profile-full-name",
+        customerProfile.name || "Not added"
     );
 
+    setText(
+        "profile-email",
+        customerProfile.email || "Not added"
+    );
+
+    setText(
+        "profile-phone",
+        customerProfile.phone || "Not added"
+    );
+
+    let customerBookings = [];
+
+    try {
+
+        const response =
+            await fetch(PROFILE_API + "/bookings");
+
+        if (!response.ok) {
+            throw new Error("Failed to load bookings.");
+        }
+
+        const allBookings =
+            await response.json();
+
+
+        customerBookings = allBookings.filter(
+            function (booking) {
+
+                return Number(booking.customerId)
+                    === Number(customerProfile.id);
+            }
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Could not load bookings:",
+            error
+        );
+    }
+
+
+    const totalBookings =
+        customerBookings.length;
+
+
+    const pendingBookings =
+        customerBookings.filter(
+            function (booking) {
+
+                return String(booking.status)
+                    .toLowerCase() === "pending";
+            }
+        ).length;
+
+
+    const confirmedBookings =
+        customerBookings.filter(
+            function (booking) {
+
+                return String(booking.status)
+                    .toLowerCase() === "confirmed";
+            }
+        ).length;
+
+
+    const completedBookings =
+        customerBookings.filter(
+            function (booking) {
+
+                return String(booking.status)
+                    .toLowerCase() === "completed";
+            }
+        ).length;
+
+
+    setText(
+        "total-bookings",
+        totalBookings
+    );
+
+    setText(
+        "pending-bookings",
+        pendingBookings
+    );
+
+    setText(
+        "confirmed-bookings",
+        confirmedBookings
+    );
+
+    setText(
+        "completed-bookings",
+        completedBookings
+    );
 }
 
 
-// =========================================
-// DISPLAY PROFILE
-// =========================================
+function setText(id, value) {
 
-document.getElementById("profile-name").textContent =
-    customerProfile.name;
+    const element =
+        document.getElementById(id);
 
-document.getElementById("profile-full-name").textContent =
-    customerProfile.name;
+    if (element) {
 
-document.getElementById("profile-email").textContent =
-    customerProfile.email;
-
-document.getElementById("profile-phone").textContent =
-    customerProfile.phone || "Not added";
-
-
-// =========================================
-// PROFILE AVATAR
-// =========================================
-
-const avatar =
-    document.querySelector(".profile-avatar");
-
-
-// Create initials from name
-
-const nameParts =
-    customerProfile.name
-        .trim()
-        .split(" ");
-
-let initials = "";
-
-if (nameParts.length >= 2) {
-
-    initials =
-        nameParts[0].charAt(0) +
-        nameParts[nameParts.length - 1].charAt(0);
-
-} else {
-
-    initials =
-        customerProfile.name
-            .substring(0, 2);
-
+        element.textContent = value;
+    }
 }
 
-avatar.textContent =
-    initials.toUpperCase();
 
-
-// =========================================
-// GET BOOKINGS
-// =========================================
-
-const savedBookings =
-    JSON.parse(
-        localStorage.getItem("rentoBookings")
-    ) || [];
-
-
-// =========================================
-// FILTER CUSTOMER BOOKINGS
-// =========================================
-
-const customerBookings =
-    savedBookings.filter(function (booking) {
-
-        return booking.customer ===
-            customerProfile.name;
-
-    });
-
-
-// =========================================
-// BOOKING COUNTS
-// =========================================
-
-const totalBookings =
-    customerBookings.length;
-
-
-const pendingBookings =
-    customerBookings.filter(function (booking) {
-
-        return booking.status === "pending";
-
-    }).length;
-
-
-const confirmedBookings =
-    customerBookings.filter(function (booking) {
-
-        return booking.status === "confirmed";
-
-    }).length;
-
-
-const completedBookings =
-    customerBookings.filter(function (booking) {
-
-        return booking.status === "completed";
-
-    }).length;
-
-
-// =========================================
-// DISPLAY COUNTS
-// =========================================
-
-document.getElementById("total-bookings")
-    .textContent = totalBookings;
-
-
-document.getElementById("pending-bookings")
-    .textContent = pendingBookings;
-
-
-document.getElementById("confirmed-bookings")
-    .textContent = confirmedBookings;
-
-
-document.getElementById("completed-bookings")
-    .textContent = completedBookings;
+loadProfile();

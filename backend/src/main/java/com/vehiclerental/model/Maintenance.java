@@ -12,7 +12,7 @@ public class Maintenance {
     }
 
     public Maintenance(int id, int vehicleId, String description,
-                       String maintenanceDate, String status) {
+                    String maintenanceDate, String status) {
         this.id = id;
         this.vehicleId = vehicleId;
         this.description = description;

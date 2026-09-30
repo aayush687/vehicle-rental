@@ -1,11 +1,6 @@
-/* =========================================
-   MY BOOKINGS
-========================================= */
 
+const API_BASE = "http://localhost:8080/api";
 
-/* =========================================
-   GET ELEMENTS
-========================================= */
 
 const bookingsList =
     document.getElementById("bookings-list");
@@ -13,229 +8,242 @@ const bookingsList =
 const emptyBookings =
     document.getElementById("empty-bookings");
 
+let bookings = [];
 
-/* =========================================
-   GET BOOKINGS
-========================================= */
+async function loadMyBookings() {
 
-let bookings =
-    JSON.parse(localStorage.getItem("rentoBookings")) || [];
+    try {
+
+        const response =
+            await fetch(`${API_BASE}/bookings`);
 
 
-/* =========================================
-   DISPLAY BOOKINGS
-========================================= */
+        if (!response.ok) {
+
+            throw new Error(
+                "Unable to load bookings."
+            );
+
+        }
+
+
+        const allBookings =
+            await response.json();
+
+
+        // the server only sends this customer's own bookings
+        bookings = allBookings;
+
+
+        displayBookings();
+
+
+    } catch (error) {
+
+        console.error(
+            "Error loading bookings:",
+            error
+        );
+
+
+        if (bookingsList) {
+
+            bookingsList.innerHTML = `
+
+                <div class="empty-booking">
+
+                    <h3>
+                        Unable to load bookings
+                    </h3>
+
+                    <p>
+                        Please make sure the backend
+                        server is running.
+                    </p>
+
+                </div>
+
+            `;
+
+        }
+
+    }
+
+}
 
 function displayBookings() {
 
-    bookingsList.innerHTML = "";
+    if (!bookingsList) {
+        return;
+    }
 
 
-    /* No bookings */
-
+    // No bookings
     if (bookings.length === 0) {
 
-        bookingsList.style.display = "none";
+        bookingsList.innerHTML = "";
 
-        emptyBookings.style.display = "block";
+        if (emptyBookings) {
+            emptyBookings.style.display = "block";
+        }
 
         return;
     }
 
 
-    bookingsList.style.display = "grid";
+    if (emptyBookings) {
+        emptyBookings.style.display = "none";
+    }
 
-    emptyBookings.style.display = "none";
+
+    // Latest booking first
+    const sortedBookings =
+        [...bookings].sort(
+            function (a, b) {
+
+                return Number(b.id) -
+                    Number(a.id);
+
+            }
+        );
 
 
-    /* Newest booking first */
+    bookingsList.innerHTML = "";
 
-    bookings
-        .slice()
-        .reverse()
-        .forEach(booking => {
 
-            const card =
+    sortedBookings.forEach(
+        function (booking) {
+
+            bookingsList.innerHTML +=
                 createBookingCard(booking);
 
-            bookingsList.appendChild(card);
-
-        });
+        }
+    );
 
 }
 
-
-/* =========================================
-   CREATE BOOKING CARD
-========================================= */
-
 function createBookingCard(booking) {
 
-    const card =
-        document.createElement("div");
-
-    card.className =
-        "my-booking-card";
-
-
-    /* Find vehicle */
-
-    let vehicle = null;
-
-    if (typeof VEHICLES !== "undefined") {
-
-        vehicle = VEHICLES.find(
-            item =>
-                Number(item.id) ===
-                Number(booking.vehicleId)
-        );
-
-    }
-
-
-    /* Vehicle image */
-
-    let vehicleImage = "";
-
-    if (vehicle && vehicle.image) {
-
-        vehicleImage = `
-            <img
-                src="../public/${vehicle.image}"
-                alt="${vehicle.name}"
-                class="my-booking-image"
-            >
-        `;
-
-    } else {
-
-        vehicleImage = `
-            <div class="my-booking-image-placeholder">
-                🚗
-            </div>
-        `;
-
-    }
-
-
-    /* Status */
-
     const status =
-        booking.status || "pending";
+        String(
+            booking.status || "pending"
+        ).toLowerCase();
 
 
-    card.innerHTML = `
+    return `
 
-        <div class="my-booking-top">
+        <div class="booking-card">
 
-            ${vehicleImage}
+            <div class="booking-card-header">
 
-            <div class="my-booking-main">
+                <div>
 
-                <div class="my-booking-title-row">
-
-                    <div>
-
-                        <h2>
-                            ${booking.vehicle || "Vehicle"}
-                        </h2>
-
-                        <p>
-                            Booking #${booking.id}
-                        </p>
-
-                    </div>
-
-                    <span
-                        class="booking-status ${status}">
-                        ${capitalize(status)}
+                    <span class="booking-number">
+                        Booking #${escapeHTML(
+                            booking.id
+                        )}
                     </span>
 
-                </div>
-
-
-                <div class="my-booking-info">
-
-                    <div>
-
-                        <span class="booking-info-label">
-                            Pickup
-                        </span>
-
-                        <strong>
-                            ${formatDate(booking.start)}
-                        </strong>
-
-                    </div>
-
-
-                    <div>
-
-                        <span class="booking-info-label">
-                            Return
-                        </span>
-
-                        <strong>
-                            ${formatDate(booking.end)}
-                        </strong>
-
-                    </div>
-
-
-                    <div>
-
-                        <span class="booking-info-label">
-                            Location
-                        </span>
-
-                        <strong>
-                            ${booking.location || "Not specified"}
-                        </strong>
-
-                    </div>
-
-
-                    <div>
-
-                        <span class="booking-info-label">
-                            Total
-                        </span>
-
-                        <strong>
-                            ${formatMoney(booking.total)}
-                        </strong>
-
-                    </div>
+                    <h3>
+                        ${escapeHTML(
+                            booking.vehicle ||
+                            "Vehicle"
+                        )}
+                    </h3>
 
                 </div>
 
 
-                <div class="my-booking-actions">
+                <span
+                    class="status status-${escapeHTML(status)}"
+                >
+                    ${formatStatus(status)}
+                </span>
 
-                    <button
-                        class="view-booking-btn"
-                        onclick="viewBooking(${booking.id})">
-
-                        View Details
-
-                    </button>
+            </div>
 
 
-                    ${
-                        status === "pending"
-                        ? `
-                            <button
-                                class="cancel-booking-btn"
-                                onclick="cancelBooking(${booking.id})">
+            <div class="booking-card-details">
 
-                                Cancel Booking
+                <div>
 
-                            </button>
-                        `
-                        : ""
-                    }
+                    <span class="booking-label">
+                        Pick-up
+                    </span>
+
+                    <strong>
+                        ${formatDate(
+                            booking.start
+                        )}
+                    </strong>
 
                 </div>
+
+
+                <div>
+
+                    <span class="booking-label">
+                        Return
+                    </span>
+
+                    <strong>
+                        ${formatDate(
+                            booking.end
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span class="booking-label">
+                        Total
+                    </span>
+
+                    <strong>
+                        ${money(
+                            booking.total || 0
+                        )}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="booking-card-actions">
+
+                <button
+                    class="btn btn-small"
+                    onclick="viewBooking(${Number(
+                        booking.id
+                    )})"
+                >
+                    View booking
+                </button>
+
+
+                ${
+                    status === "pending" ||
+                    status === "confirmed"
+
+                    ? `
+
+                        <button
+                            class="btn btn-small"
+                            onclick="cancelBooking(${Number(
+                                booking.id
+                            )})"
+                        >
+                            Cancel booking
+                        </button>
+
+                      `
+
+                    : ""
+
+                }
 
             </div>
 
@@ -243,136 +251,209 @@ function createBookingCard(booking) {
 
     `;
 
-
-    return card;
 }
-
-
-/* =========================================
-   VIEW BOOKING
-========================================= */
 
 function viewBooking(id) {
 
     window.location.href =
-    "booking-details.html?id=" + id;
+        "booking-details.html?id=" +
+        encodeURIComponent(id);
 
 }
 
-
-/* =========================================
-   CANCEL BOOKING
-========================================= */
-
-function cancelBooking(id) {
+async function cancelBooking(id) {
 
     const booking =
-        bookings.find(
-            item => Number(item.id) === Number(id)
-        );
+        bookings.find(function (item) {
+
+            return Number(item.id) ===
+                Number(id);
+
+        });
 
 
     if (!booking) {
+
+        alert("Booking not found.");
+
         return;
+
     }
 
 
-    /* Confirm cancellation */
+    const status =
+        String(
+            booking.status || ""
+        ).toLowerCase();
 
-    const confirmCancel =
+
+    // Do not allow cancelling completed/cancelled bookings
+    if (
+        status === "completed" ||
+        status === "cancelled"
+    ) {
+
+        alert(
+            "This booking cannot be cancelled."
+        );
+
+        return;
+
+    }
+
+
+    const confirmed =
         confirm(
             "Are you sure you want to cancel this booking?"
         );
 
 
-    if (!confirmCancel) {
+    if (!confirmed) {
         return;
     }
 
 
-    /* Change status */
+    try {
 
-    booking.status = "cancelled";
-
-
-    /* Save */
-
-    localStorage.setItem(
-        "rentoBookings",
-        JSON.stringify(bookings)
-    );
+        const response =
+            await fetch(
+                `${API_BASE}/bookings/${id}/status?status=cancelled`,
+                {
+                    method: "PUT"
+                }
+            );
 
 
-    /* Refresh */
+        if (!response.ok) {
 
-    displayBookings();
+            throw new Error(
+                "Unable to cancel booking."
+            );
+
+        }
+
+
+        const updatedBooking =
+            await response.json();
+
+
+        // Update local page data
+        bookings =
+            bookings.map(function (item) {
+
+                if (
+                    Number(item.id) ===
+                    Number(id)
+                ) {
+
+                    return updatedBooking;
+
+                }
+
+                return item;
+
+            });
+
+
+        displayBookings();
+
+
+        if (
+            typeof showToast ===
+            "function"
+        ) {
+
+            showToast(
+                "Booking cancelled successfully."
+            );
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Cancellation error:",
+            error
+        );
+
+
+        alert(
+            "Unable to cancel booking."
+        );
+
+    }
 
 }
-
-
-/* =========================================
-   FORMAT DATE
-========================================= */
 
 function formatDate(dateString) {
 
     if (!dateString) {
-        return "---";
+        return "-";
     }
+
 
     const date =
         new Date(dateString);
 
 
+    if (isNaN(date.getTime())) {
+        return dateString;
+    }
+
+
     return date.toLocaleDateString(
-        "en-US",
+        "en-GB",
         {
-            year: "numeric",
+            day: "2-digit",
             month: "short",
-            day: "numeric"
+            year: "numeric"
         }
     );
 
 }
 
+function formatStatus(status) {
 
-/* =========================================
-   FORMAT MONEY
-========================================= */
+    switch (
+        String(status).toLowerCase()
+    ) {
 
-function formatMoney(amount) {
+        case "pending":
+            return "Pending";
 
-    if (typeof money === "function") {
+        case "confirmed":
+            return "Confirmed";
 
-        return money(amount);
+        case "completed":
+            return "Completed";
+
+        case "cancelled":
+            return "Cancelled";
+
+        default:
+            return status;
 
     }
 
+}
 
-    return "Rs. " +
-        Number(amount || 0).toLocaleString();
+function escapeHTML(value) {
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
 }
 
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
 
-/* =========================================
-   CAPITALIZE
-========================================= */
+        loadMyBookings();
 
-function capitalize(text) {
-
-    if (!text) {
-        return "";
     }
-
-    return text.charAt(0).toUpperCase()
-        + text.slice(1);
-
-}
-
-
-/* =========================================
-   INITIAL LOAD
-========================================= */
-
-displayBookings();
+);

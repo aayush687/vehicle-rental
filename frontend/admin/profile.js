@@ -1,191 +1,124 @@
-/* =========================================
-   ADMIN PROFILE
-========================================= */
+const ADMIN_API = "http://localhost:8080/api";
 
+const adminProfileForm = document.getElementById("admin-profile-form");
+const adminNameInput = document.getElementById("admin-name-input");
+const adminEmailInput = document.getElementById("admin-email-input");
+const adminPhoneInput = document.getElementById("admin-phone-input");
+const adminPasswordInput = document.getElementById("admin-password-input");
+const adminConfirmPasswordInput = document.getElementById("admin-confirm-password-input");
+const adminProfileMessage = document.getElementById("admin-profile-message");
+const adminNameLabel = document.querySelector(".admin-name");
 
-/* =========================================
-   DEFAULT ADMIN INFORMATION
-========================================= */
+let adminProfile = null;
 
-const DEFAULT_ADMIN = {
-
-    name: "Admin User",
-
-    email: "admin@rento.com",
-
-    phone: "9800000000"
-
-};
-
-
-/* =========================================
-   GET ELEMENTS
-========================================= */
-
-const adminProfileForm =
-    document.getElementById("admin-profile-form");
-
-const adminNameInput =
-    document.getElementById("admin-name-input");
-
-const adminEmailInput =
-    document.getElementById("admin-email-input");
-
-const adminPhoneInput =
-    document.getElementById("admin-phone-input");
-
-const adminPasswordInput =
-    document.getElementById("admin-password-input");
-
-const adminConfirmPasswordInput =
-    document.getElementById("admin-confirm-password-input");
-
-const adminProfileMessage =
-    document.getElementById("admin-profile-message");
-
-const adminNameLabel =
-    document.querySelector(".admin-name");
-
-
-/* =========================================
-   GET SAVED PROFILE
-========================================= */
-
-let adminProfile =
-    JSON.parse(
-        localStorage.getItem("rentoAdminProfile")
-    );
-
-if (!adminProfile) {
-
-    adminProfile = {
-        ...DEFAULT_ADMIN
-    };
-
-    localStorage.setItem(
-        "rentoAdminProfile",
-        JSON.stringify(adminProfile)
-    );
-
+function showAdminMessage(text, type) {
+    adminProfileMessage.textContent = text;
+    adminProfileMessage.className = "profile-message " + type;
 }
-
-
-/* =========================================
-   FILL FORM
-========================================= */
 
 function fillForm() {
 
-    adminNameInput.value = adminProfile.name;
+    if (!adminProfile) {
+        return;
+    }
 
-    adminEmailInput.value = adminProfile.email;
-
+    adminNameInput.value = adminProfile.name || "";
+    adminEmailInput.value = adminProfile.email || "";
     adminPhoneInput.value = adminProfile.phone || "";
-
     adminPasswordInput.value = "";
-
     adminConfirmPasswordInput.value = "";
 
+    if (adminNameLabel) {
+        adminNameLabel.textContent = adminProfile.name;
+    }
 }
-
-
-/* =========================================
-   RESET FORM
-========================================= */
 
 function resetForm() {
-
     fillForm();
-
     adminProfileMessage.textContent = "";
-
     adminProfileMessage.className = "profile-message";
-
 }
 
-
-/* =========================================
-   SAVE PROFILE
-========================================= */
-
-adminProfileForm.addEventListener("submit", function (event) {
+adminProfileForm.addEventListener("submit", async function (event) {
 
     event.preventDefault();
 
-    const newPassword =
-        adminPasswordInput.value;
+    if (!adminProfile) {
+        showAdminMessage("Please log in again.", "error");
+        return;
+    }
 
-    const confirmPassword =
-        adminConfirmPasswordInput.value;
+    const newPassword = adminPasswordInput.value;
+    const confirmPassword = adminConfirmPasswordInput.value;
 
-
-    /* Validate password match, if the
-       admin is trying to change it */
-
-    if (
-        newPassword ||
-        confirmPassword
-    ) {
+    if (newPassword || confirmPassword) {
 
         if (newPassword !== confirmPassword) {
-
-            adminProfileMessage.textContent =
-                "Passwords do not match.";
-
-            adminProfileMessage.className =
-                "profile-message error";
-
+            showAdminMessage("Passwords do not match.", "error");
             return;
-
         }
 
+        if (newPassword.length < 6) {
+            showAdminMessage("Password must be at least 6 characters.", "error");
+            return;
+        }
     }
 
+    try {
 
-    adminProfile.name = adminNameInput.value.trim();
+        const response = await fetch(
+            ADMIN_API + "/admin/" + adminProfile.id,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: adminNameInput.value.trim(),
+                    email: adminEmailInput.value.trim(),
+                    phone: adminPhoneInput.value.trim()
+                })
+            }
+        );
 
-    adminProfile.email = adminEmailInput.value.trim();
+        if (!response.ok) {
+            showAdminMessage((await response.text()) || "Could not update profile.", "error");
+            return;
+        }
 
-    adminProfile.phone = adminPhoneInput.value.trim();
+        const updated = await response.json();
 
+        adminProfile.name = updated.name;
+        adminProfile.email = updated.email;
+        adminProfile.phone = updated.phone;
 
-    localStorage.setItem(
-        "rentoAdminProfile",
-        JSON.stringify(adminProfile)
-    );
+        if (newPassword) {
 
+            const passwordResponse = await fetch(
+                ADMIN_API + "/admin/" + adminProfile.id + "/password",
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password: newPassword })
+                }
+            );
 
-    if (adminNameLabel) {
+            if (!passwordResponse.ok) {
+                showAdminMessage((await passwordResponse.text()) || "Could not change password.", "error");
+                return;
+            }
+        }
 
-        adminNameLabel.textContent =
-            adminProfile.name;
-
+    } catch (error) {
+        showAdminMessage("Cannot reach the server. Is the backend running?", "error");
+        return;
     }
 
-
-    adminProfileMessage.textContent =
-        "Profile updated successfully.";
-
-    adminProfileMessage.className =
-        "profile-message success";
-
-
-    adminPasswordInput.value = "";
-
-    adminConfirmPasswordInput.value = "";
-
+    fillForm();
+    showAdminMessage("Profile updated successfully.", "success");
 });
 
-
-/* =========================================
-   INITIAL LOAD
-========================================= */
-
-fillForm();
-
-if (adminNameLabel) {
-
-    adminNameLabel.textContent =
-        adminProfile.name;
-
+async function loadAdminProfile() {
+    adminProfile = await requireAdminLogin();
+    fillForm();
 }
+
+loadAdminProfile();

@@ -12,10 +12,6 @@
 
 <body>
 
-    <!-- =========================
-         HEADER / NAVBAR
-    ========================== -->
-
     <header class="navbar admin-navbar">
 
         <div class="brand">
@@ -60,11 +56,6 @@
 
     </header>
 
-
-    <!-- =========================
-         MAIN CONTENT
-    ========================== -->
-
     <main class="admin-main">
 
         <!-- Page heading -->
@@ -82,10 +73,6 @@
         </section>
 
 
-        <!-- =========================
-             TOOLBAR
-        ========================== -->
-
         <section class="admin-toolbar">
 
             <div class="filter-group">
@@ -94,11 +81,6 @@
             </div>
 
         </section>
-
-
-        <!-- =========================
-             CUSTOMERS TABLE
-        ========================== -->
 
         <section class="admin-section">
 
@@ -114,6 +96,7 @@
                             <th>Phone</th>
                             <th>Total Bookings</th>
                             <th>Total Spent</th>
+                            <th>Actions</th>
                         </tr>
 
                     </thead>
@@ -121,7 +104,7 @@
                     <tbody id="customers-table-body">
 
                         <tr>
-                            <td colspan="5" class="admin-empty">
+                            <td colspan="6" class="admin-empty">
                                 Loading customers...
                             </td>
                         </tr>
@@ -136,10 +119,6 @@
 
     </main>
 
-
-    <!-- =========================
-         FOOTER
-    ========================== -->
 
     <footer class="admin-footer">
 
@@ -156,13 +135,9 @@
 
     </footer>
 
-
-    <!-- =========================
-         JAVASCRIPT
-    ========================== -->
-
-    <script src="../public/data.js"></script>
-    <script src="customers.js"></script>
+<script src="../public/auth.js"></script>
+<script src="../public/data.js"></script>
+<script src="customers.js"></script>
 
 </body>
 

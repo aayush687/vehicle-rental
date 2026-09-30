@@ -22,11 +22,6 @@
 
 <body>
 
-
-<!-- =========================================
-     NAVBAR
-========================================= -->
-
 <div class="navbar">
 
     <div class="brand">
@@ -54,15 +49,7 @@
 </div>
 
 
-
-<!-- =========================================
-     MAIN CONTENT
-========================================= -->
-
 <div class="container booking-page">
-
-
-    <!-- Back -->
 
     <a
         href="browse-vehicles.html"
@@ -73,25 +60,13 @@
 
 
     <div class="booking-layout">
-
-
-        <!-- =====================================
-             BOOKING FORM
-        ====================================== -->
-
         <div class="booking-form-card">
-
             <h1>
                 Book Your Vehicle
             </h1>
-
             <p class="booking-intro">
                 Enter your rental details to continue.
             </p>
-
-
-
-            <!-- Selected vehicle -->
 
             <div
                 class="selected-vehicle"
@@ -100,173 +75,112 @@
                 <!-- JavaScript inserts vehicle -->
             </div>
 
-
-
-            <!-- Dates -->
-
             <div class="booking-form-section">
-
                 <h2>
                     Rental Details
                 </h2>
-
-
                 <div class="booking-input-row">
-
-
                     <div class="booking-input-group">
-
                         <label for="pickup-date">
                             Pick-up Date
                         </label>
-
                         <input
                             type="date"
                             id="pickup-date"
                             required
                         >
-
                     </div>
 
-
                     <div class="booking-input-group">
-
                         <label for="return-date">
                             Return Date
                         </label>
-
                         <input
                             type="date"
                             id="return-date"
                             required
                         >
-
                     </div>
-
-
                 </div>
 
-
                 <div class="booking-input-group">
-
                     <label for="pickup-location">
                         Pick-up Location
                     </label>
-
                     <select id="pickup-location">
-
                         <option value="">
                             Select pick-up location
                         </option>
-
                         <option value="Kathmandu">
                             Kathmandu
                         </option>
-
                         <option value="Lalitpur">
                             Lalitpur
                         </option>
-
                         <option value="Bhaktapur">
                             Bhaktapur
                         </option>
-
                         <option value="Other">
                             Other
                         </option>
-
                     </select>
-
                 </div>
 
-
                 <div class="booking-input-group">
-
                     <label for="special-request">
                         Special Request
                         <span>(Optional)</span>
                     </label>
-
                     <textarea
                         id="special-request"
                         rows="4"
                         placeholder="Any additional information..."
                     ></textarea>
-
                 </div>
-
             </div>
 
-
-
-            <!-- Customer information -->
-
             <div class="booking-form-section">
-
                 <h2>
                     Customer Information
                 </h2>
-
-
                 <div class="booking-input-row">
-
-
                     <div class="booking-input-group">
-
                         <label for="customer-name">
                             Full Name
                         </label>
-
                         <input
                             type="text"
                             id="customer-name"
                             value="Aayush Subedi"
                         >
-
                     </div>
-
-
                     <div class="booking-input-group">
-
                         <label for="customer-phone">
                             Phone Number
                         </label>
-
                         <input
                             type="tel"
                             id="customer-phone"
                             placeholder="XXXXXXXXXX"
                         >
-
                     </div>
-
-
                 </div>
-
-
                 <div class="booking-input-group">
-
                     <label for="customer-email">
                         Email
                     </label>
-
                     <input
                         type="email"
                         id="customer-email"
                         placeholder="name@email.com"
                     >
-
                 </div>
-
             </div>
-
 
             <p
                 class="booking-error"
                 id="booking-error"
             ></p>
-
-
             <button
                 type="button"
                 class="btn booking-confirm-btn"
@@ -274,133 +188,77 @@
             >
                 Confirm Booking
             </button>
-
-
         </div>
-
-
-
-        <!-- =====================================
-             PRICE SUMMARY
-        ====================================== -->
-
         <div class="booking-summary-card">
-
             <h2>
                 Booking Summary
             </h2>
-
-
             <div
                 id="booking-summary"
                 class="booking-summary-content"
             >
-
                 <!-- JavaScript -->
-
             </div>
-
-
         </div>
-
-
     </div>
-
 </div>
 
-
-
-<!-- =========================================
-     FOOTER
-========================================= -->
 
 <footer
     class="footer"
     id="footer"
 >
-
     <div class="footer-content">
-
-
         <div>
-
             <div class="brand">
                 Rento
             </div>
-
             <p>
                 Rent a vehicle in a few clicks.
                 No phone calls, no paperwork.
             </p>
-
         </div>
 
-
         <div>
-
             <h3>
                 Quick links
             </h3>
-
             <a href="dashboard.html">
                 Home
             </a>
-
             <a href="browse-vehicles.html">
                 Browse Vehicles
             </a>
-
             <a href="../public/index.html#footer">
                 Services
             </a>
-
             <a href="../public/index.html#footer">
                 About us
             </a>
-
         </div>
 
-
         <div>
-
             <h3>
                 Contact
             </h3>
-
             <p>
                 Kathmandu, Nepal
             </p>
-
             <p>
                 support@rento.com
             </p>
-
             <p>
                 +977 XXX-XXX-XXX
             </p>
-
         </div>
-
     </div>
-
 
     <p class="footer-bottom">
         &copy; 2026 Rento. All rights reserved.
     </p>
-
 </footer>
-
-
-
-<!-- =========================================
-     JAVASCRIPT
-========================================= -->
-
+<script src="../public/auth.js"></script>
 <script src="../public/data.js"></script>
-
 <script src="booking.js"></script>
-
-
 </body>
-
 </html>

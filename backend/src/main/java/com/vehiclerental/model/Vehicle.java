@@ -18,9 +18,9 @@ public class Vehicle {
     }
 
     public Vehicle(int id, String name, String category, String brand,
-                   double pricePerDay, String status, String image,
-                   String dateAdded, String transmission, int seats,
-                   double rating) {
+                double pricePerDay, String status, String image,
+                String dateAdded, String transmission, int seats,
+                double rating) {
         this.id = id;
         this.name = name;
         this.category = category;

@@ -1,439 +1,169 @@
-/* =========================================
-   ADMIN DASHBOARD
-========================================= */
 
+const API_BASE = "http://localhost:8080/api";
 
-/* =========================================
-   GET BOOKINGS
-========================================= */
+async function loadDashboardStatistics() {
 
-function getBookings() {
+    try {
 
-    const savedBookings =
-        JSON.parse(
-            localStorage.getItem("rentoBookings")
-        );
+        const response = await fetch(`${API_BASE}/dashboard`);
 
+        if (!response.ok) {
+            throw new Error("Failed to load dashboard statistics");
+        }
 
-    /*
-       If customer bookings exist in
-       localStorage, use them.
-    */
+        const data = await response.json();
 
-    if (
-        savedBookings &&
-        Array.isArray(savedBookings)
-    ) {
+        // Vehicle statistics
+        document.getElementById("total-vehicles").textContent =
+            data.totalVehicles ?? 0;
 
-        return savedBookings;
+        document.getElementById("available-vehicles").textContent =
+            data.availableVehicles ?? 0;
 
-    }
+        // Booking statistics
+        document.getElementById("total-bookings").textContent =
+            data.totalBookings ?? 0;
 
+        document.getElementById("pending-bookings").textContent =
+            data.pendingBookings ?? 0;
 
-    /*
-       Otherwise use the sample
-       bookings from data.js.
-    */
+        document.getElementById("confirmed-bookings").textContent =
+            data.confirmedBookings ?? 0;
 
-    if (
-        typeof BOOKINGS !== "undefined"
-    ) {
+        document.getElementById("completed-bookings").textContent =
+            data.completedBookings ?? 0;
 
-        return BOOKINGS;
+    } catch (error) {
+
+        console.error("Dashboard statistics error:", error);
 
     }
-
-
-    return [];
-
 }
 
+async function loadRecentBookings() {
 
+    const tableBody = document.getElementById("recent-bookings");
 
-/* =========================================
-   LOAD VEHICLE STATISTICS
-========================================= */
+    if (!tableBody) {
+        return;
+    }
 
-function loadVehicleStatistics() {
+    try {
 
-    /*
-       Get vehicles from data.js
-    */
+        const response = await fetch(`${API_BASE}/bookings`);
 
-    const vehicles =
-        typeof VEHICLES !== "undefined"
-            ? VEHICLES
-            : [];
+        if (!response.ok) {
+            throw new Error("Failed to load bookings");
+        }
 
+        const bookings = await response.json();
 
-    const totalVehicles =
-        vehicles.length;
+        // Clear existing rows
+        tableBody.innerHTML = "";
 
+        // Sort newest booking first
+        bookings.sort((a, b) => b.id - a.id);
 
-    const availableVehicles =
-        vehicles.filter(function (vehicle) {
+        // Show latest 5 bookings
+        const recentBookings = bookings.slice(0, 5);
 
-            return vehicle.status === "available";
+        if (recentBookings.length === 0) {
 
-        }).length;
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center;">
+                        No bookings found
+                    </td>
+                </tr>
+            `;
 
+            return;
+        }
 
-    /*
-       Display values
-    */
+        recentBookings.forEach(booking => {
 
-    document.getElementById(
-        "total-vehicles"
-    ).textContent =
-        totalVehicles;
+            const row = document.createElement("tr");
 
+row.innerHTML = `
+    <td>#${booking.id}</td>
+    <td>${escapeHTML(booking.customer || "Unknown")}</td>
+    <td>${escapeHTML(booking.vehicle || "Unknown")}</td>
+    <td>${formatDate(booking.start)}</td>
+    <td>${formatDate(booking.end)}</td>
+    <td>Rs. ${Number(booking.total || 0).toLocaleString()}</td>
+    <td>
+        <span class="status ${getStatusClass(booking.status)}">
+            ${formatStatus(booking.status)}
+        </span>
+    </td>
+`;
 
-    document.getElementById(
-        "available-vehicles"
-    ).textContent =
-        availableVehicles;
+            tableBody.appendChild(row);
 
-}
+        });
 
+    } catch (error) {
 
-
-/* =========================================
-   LOAD BOOKING STATISTICS
-========================================= */
-
-function loadBookingStatistics() {
-
-    const bookings =
-        getBookings();
-
-
-    /*
-       Total bookings
-    */
-
-    const totalBookings =
-        bookings.length;
-
-
-    /*
-       Pending bookings
-    */
-
-    const pendingBookings =
-        bookings.filter(function (booking) {
-
-            return booking.status === "pending";
-
-        }).length;
-
-
-    /*
-       Confirmed bookings
-    */
-
-    const confirmedBookings =
-        bookings.filter(function (booking) {
-
-            return booking.status === "confirmed";
-
-        }).length;
-
-
-    /*
-       Completed bookings
-    */
-
-    const completedBookings =
-        bookings.filter(function (booking) {
-
-            return booking.status === "completed";
-
-        }).length;
-
-
-    /*
-       Display values
-    */
-
-    document.getElementById(
-        "total-bookings"
-    ).textContent =
-        totalBookings;
-
-
-    document.getElementById(
-        "pending-bookings"
-    ).textContent =
-        pendingBookings;
-
-
-    document.getElementById(
-        "confirmed-bookings"
-    ).textContent =
-        confirmedBookings;
-
-
-    document.getElementById(
-        "completed-bookings"
-    ).textContent =
-        completedBookings;
-
-}
-
-
-
-/* =========================================
-   LOAD RECENT BOOKINGS
-========================================= */
-
-function loadRecentBookings() {
-
-    const bookings =
-        getBookings();
-
-
-    const tableBody =
-        document.getElementById(
-            "recent-bookings"
-        );
-
-
-    tableBody.innerHTML = "";
-
-
-    /*
-       No bookings
-    */
-
-    if (bookings.length === 0) {
+        console.error("Recent bookings error:", error);
 
         tableBody.innerHTML = `
-
             <tr>
-
-                <td
-                    colspan="7"
-                    class="admin-empty"
-                >
-                    No bookings found.
+                <td colspan="6" style="text-align: center;">
+                    Unable to load bookings
                 </td>
-
             </tr>
-
         `;
-
-        return;
-
     }
-
-
-    /*
-       Sort bookings
-       newest first
-    */
-
-    const recentBookings =
-        [...bookings]
-            .sort(function (a, b) {
-
-                return (
-                    Number(b.id) -
-                    Number(a.id)
-                );
-
-            })
-            .slice(0, 5);
-
-
-    /*
-       Display bookings
-    */
-
-    recentBookings.forEach(function (booking) {
-
-        const row =
-            document.createElement("tr");
-
-
-        const status =
-            booking.status || "pending";
-
-
-        row.innerHTML = `
-
-            <td>
-                #${escapeHTML(booking.id)}
-            </td>
-
-            <td>
-                ${escapeHTML(
-                    booking.customer ||
-                    "Unknown"
-                )}
-            </td>
-
-            <td>
-                ${escapeHTML(
-                    booking.vehicle ||
-                    "Unknown"
-                )}
-            </td>
-
-            <td>
-                ${formatDate(
-                    booking.start
-                )}
-            </td>
-
-            <td>
-                ${formatDate(
-                    booking.end
-                )}
-            </td>
-
-            <td>
-                Rs.
-                ${Number(
-                    booking.total || 0
-                ).toLocaleString("en-IN")}
-            </td>
-
-            <td>
-
-                <span
-                    class="admin-status status-${escapeHTML(status)}"
-                >
-                    ${formatStatus(status)}
-                </span>
-
-            </td>
-
-        `;
-
-
-        tableBody.appendChild(row);
-
-    });
-
 }
 
+function formatDate(date) {
 
-
-/* =========================================
-   FORMAT DATE
-========================================= */
-
-function formatDate(dateString) {
-
-    if (!dateString) {
-
+    if (!date) {
         return "-";
-
     }
 
+    const parsedDate = new Date(date);
 
-    const date =
-        new Date(dateString);
-
-
-    if (
-        isNaN(
-            date.getTime()
-        )
-    ) {
-
-        return dateString;
-
+    if (isNaN(parsedDate.getTime())) {
+        return date;
     }
 
-
-    return date.toLocaleDateString(
-        "en-US",
-        {
-            year: "numeric",
-            month: "short",
-            day: "numeric"
-        }
-    );
-
+    return parsedDate.toLocaleDateString("en-GB");
 }
 
-
-
-/* =========================================
-   FORMAT STATUS
-========================================= */
 
 function formatStatus(status) {
 
-    switch (
-        String(status).toLowerCase()
-    ) {
-
-        case "pending":
-            return "Pending";
-
-        case "confirmed":
-            return "Confirmed";
-
-        case "completed":
-            return "Completed";
-
-        case "cancelled":
-            return "Cancelled";
-
-        default:
-            return status;
-
+    if (!status) {
+        return "-";
     }
 
+    return status.charAt(0).toUpperCase() +
+           status.slice(1).toLowerCase();
 }
 
+function getStatusClass(status) {
 
+    if (!status) {
+        return "";
+    }
 
-/* =========================================
-   ESCAPE HTML
-========================================= */
+    return status.toLowerCase();
+}
 
 function escapeHTML(value) {
 
     return String(value)
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
+document.addEventListener("DOMContentLoaded", () => {
 
+    loadDashboardStatistics();
+    loadRecentBookings();
 
-/* =========================================
-   START DASHBOARD
-========================================= */
-
-loadVehicleStatistics();
-
-loadBookingStatistics();
-
-loadRecentBookings();
+});

@@ -1,11 +1,5 @@
-/* =========================================
-   ADMIN — MANAGE BOOKINGS
-========================================= */
 
-
-/* =========================================
-   GET ELEMENTS
-========================================= */
+const API_BASE = "http://localhost:8080/api";
 
 const bookingsTableBody =
     document.getElementById("bookings-table-body");
@@ -16,160 +10,38 @@ const bookingSearchInput =
 const bookingFilterStatus =
     document.getElementById("booking-filter-status");
 
+let bookings = [];
 
-/* =========================================
-   GET BOOKINGS
-========================================= */
+async function loadBookings() {
 
-function getBookings() {
+    try {
 
-    const savedBookings =
-        JSON.parse(
-            localStorage.getItem("rentoBookings")
-        );
+        const response =
+            await fetch(`${API_BASE}/bookings`);
 
-    if (
-        savedBookings &&
-        Array.isArray(savedBookings)
-    ) {
+        if (!response.ok) {
+            throw new Error("Failed to load bookings.");
+        }
 
-        return savedBookings;
+        bookings = await response.json();
 
+        renderBookings();
+
+    } catch (error) {
+
+        console.error("Error loading bookings:", error);
+
+        bookingsTableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="admin-empty">
+                    Unable to load bookings.
+                </td>
+            </tr>
+        `;
     }
-
-    if (typeof BOOKINGS !== "undefined") {
-
-        return BOOKINGS;
-
-    }
-
-    return [];
-
 }
-
-
-function saveBookings(bookings) {
-
-    localStorage.setItem(
-        "rentoBookings",
-        JSON.stringify(bookings)
-    );
-
-}
-
-
-/* =========================================
-   GET / SAVE VEHICLES
-   (same storage the admin Vehicles page
-    reads and writes, so status changes
-    here are reflected everywhere else)
-========================================= */
-
-function getVehicles() {
-
-    const savedVehicles =
-        JSON.parse(
-            localStorage.getItem("rentoVehicles")
-        );
-
-    if (
-        savedVehicles &&
-        Array.isArray(savedVehicles)
-    ) {
-
-        return savedVehicles;
-
-    }
-
-    if (typeof VEHICLES !== "undefined") {
-
-        return VEHICLES;
-
-    }
-
-    return [];
-
-}
-
-
-function saveVehicles(vehicles) {
-
-    localStorage.setItem(
-        "rentoVehicles",
-        JSON.stringify(vehicles)
-    );
-
-}
-
-
-/* =========================================
-   SYNC VEHICLE STATUS TO BOOKING STATUS
-
-   A booking and its vehicle are two separate
-   records, so changing one doesn't automatically
-   change the other. This keeps them in sync:
-     - confirmed  -> vehicle becomes "booked"
-     - completed  -> vehicle becomes "available" (returned)
-     - cancelled  -> vehicle becomes "available" (never went out)
-     - pending    -> vehicle is left as-is (not
-                      reserved until an admin confirms it)
-========================================= */
-
-function syncVehicleStatus(booking, newStatus) {
-
-    const vehicles =
-        getVehicles();
-
-    const vehicle =
-        vehicles.find(function (item) {
-
-            /* Prefer matching by vehicleId
-               (bookings made through the
-               customer booking page have this),
-               otherwise fall back to matching
-               by vehicle name. */
-
-            if (booking.vehicleId) {
-
-                return Number(item.id) ===
-                    Number(booking.vehicleId);
-
-            }
-
-            return item.name === booking.vehicle;
-
-        });
-
-    if (!vehicle) {
-        return;
-    }
-
-    if (newStatus === "confirmed") {
-
-        vehicle.status = "booked";
-
-    } else if (
-        newStatus === "completed" ||
-        newStatus === "cancelled"
-    ) {
-
-        vehicle.status = "available";
-
-    }
-
-    saveVehicles(vehicles);
-
-}
-
-
-/* =========================================
-   RENDER BOOKINGS TABLE
-========================================= */
 
 function renderBookings() {
-
-    const bookings =
-        getBookings();
 
     const searchTerm =
         bookingSearchInput.value
@@ -178,6 +50,7 @@ function renderBookings() {
 
     const statusFilter =
         bookingFilterStatus.value;
+
 
     const filtered =
         bookings.filter(function (booking) {
@@ -194,18 +67,17 @@ function renderBookings() {
                 vehicle.includes(searchTerm);
 
             const status =
-                booking.status || "pending";
+                String(booking.status || "pending")
+                    .toLowerCase();
 
             const matchesStatus =
                 statusFilter === "all" ||
                 status === statusFilter;
 
-            return (
-                matchesSearch &&
-                matchesStatus
-            );
+            return matchesSearch && matchesStatus;
 
         });
+
 
     bookingsTableBody.innerHTML = "";
 
@@ -221,7 +93,6 @@ function renderBookings() {
         `;
 
         return;
-
     }
 
 
@@ -238,22 +109,42 @@ function renderBookings() {
         const row =
             document.createElement("tr");
 
+
         const status =
-            booking.status || "pending";
+            String(booking.status || "pending")
+                .toLowerCase();
+
 
         row.innerHTML = `
 
             <td>#${escapeHTML(booking.id)}</td>
 
-            <td>${escapeHTML(booking.customer || "Unknown")}</td>
+            <td>
+                ${escapeHTML(
+                    booking.customer || "Unknown"
+                )}
+            </td>
 
-            <td>${escapeHTML(booking.vehicle || "Unknown")}</td>
+            <td>
+                ${escapeHTML(
+                    booking.vehicle || "Unknown"
+                )}
+            </td>
 
-            <td>${formatDate(booking.start)}</td>
+            <td>
+                ${formatDate(booking.start)}
+            </td>
 
-            <td>${formatDate(booking.end)}</td>
+            <td>
+                ${formatDate(booking.end)}
+            </td>
 
-            <td>Rs. ${Number(booking.total || 0).toLocaleString("en-IN")}</td>
+            <td>
+                Rs.
+                ${Number(
+                    booking.total || 0
+                ).toLocaleString("en-IN")}
+            </td>
 
             <td>
                 <span class="admin-status status-${escapeHTML(status)}">
@@ -262,29 +153,57 @@ function renderBookings() {
             </td>
 
             <td>
+
                 <div class="admin-table-actions">
 
                     <select
                         class="admin-status-select"
-                        onchange="updateBookingStatus(${booking.id}, this.value)">
+                        onchange="updateBookingStatus(${booking.id}, this.value)"
+                    >
 
-                        <option value="pending" ${status === "pending" ? "selected" : ""}>Pending</option>
-                        <option value="confirmed" ${status === "confirmed" ? "selected" : ""}>Confirmed</option>
-                        <option value="completed" ${status === "completed" ? "selected" : ""}>Completed</option>
-                        <option value="cancelled" ${status === "cancelled" ? "selected" : ""}>Cancelled</option>
+                        <option
+                            value="pending"
+                            ${status === "pending" ? "selected" : ""}
+                        >
+                            Pending
+                        </option>
+
+                        <option
+                            value="confirmed"
+                            ${status === "confirmed" ? "selected" : ""}
+                        >
+                            Confirmed
+                        </option>
+
+                        <option
+                            value="completed"
+                            ${status === "completed" ? "selected" : ""}
+                        >
+                            Completed
+                        </option>
+
+                        <option
+                            value="cancelled"
+                            ${status === "cancelled" ? "selected" : ""}
+                        >
+                            Cancelled
+                        </option>
 
                     </select>
 
+
                     <button
                         class="admin-delete-btn"
-                        onclick="deleteBooking(${booking.id})">
+                        onclick="deleteBooking(${booking.id})"
+                    >
                         Delete
                     </button>
 
                 </div>
-            </td>
 
+            </td>
         `;
+
 
         bookingsTableBody.appendChild(row);
 
@@ -292,98 +211,162 @@ function renderBookings() {
 
 }
 
+async function updateBookingStatus(id, newStatus) {
 
-/* =========================================
-   UPDATE BOOKING STATUS
-========================================= */
+    try {
 
-function updateBookingStatus(id, newStatus) {
+        const response =
+            await fetch(
+                `${API_BASE}/bookings/${id}/status?status=${encodeURIComponent(newStatus)}`,
+                {
+                    method: "PUT"
+                }
+            );
 
-    const bookings =
-        getBookings();
 
-    const booking =
-        bookings.find(function (item) {
-            return Number(item.id) === Number(id);
-        });
+        if (!response.ok) {
 
-    if (!booking) {
-        return;
-    }
+            throw new Error(
+                "Failed to update booking status."
+            );
 
-    booking.status = newStatus;
+        }
 
-    saveBookings(bookings);
 
-    syncVehicleStatus(booking, newStatus);
+        const updatedBooking =
+            await response.json();
 
-    renderBookings();
 
-    if (typeof showToast === "function") {
+        /* Replace the old booking with
+           the booking returned from MySQL */
 
-        showToast("Booking status updated.");
+        bookings =
+            bookings.map(function (booking) {
+
+                if (
+                    Number(booking.id) ===
+                    Number(id)
+                ) {
+
+                    return updatedBooking;
+
+                }
+
+                return booking;
+
+            });
+
+
+        renderBookings();
+
+
+        if (typeof showToast === "function") {
+
+            showToast(
+                "Booking status updated successfully."
+            );
+
+        }
+
+
+        console.log(
+            "Booking updated:",
+            updatedBooking
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error updating booking:",
+            error
+        );
+
+
+        alert(
+            "Unable to update booking status."
+        );
+
+
+        /* Reload original data */
+
+        await loadBookings();
 
     }
 
 }
 
-
-/* =========================================
-   DELETE BOOKING
-========================================= */
-
-function deleteBooking(id) {
+async function deleteBooking(id) {
 
     const confirmDelete =
         confirm(
             "Are you sure you want to delete this booking?"
         );
 
+
     if (!confirmDelete) {
         return;
     }
 
-    const bookings =
-        getBookings();
 
-    const bookingToDelete =
-        bookings.find(function (item) {
-            return Number(item.id) === Number(id);
-        });
+    try {
 
-    const updatedBookings =
-        bookings.filter(function (item) {
-            return Number(item.id) !== Number(id);
-        });
+        const response =
+            await fetch(
+                `${API_BASE}/bookings/${id}`,
+                {
+                    method: "DELETE"
+                }
+            );
 
-    saveBookings(updatedBookings);
 
-    /* If the booking being removed had the
-       vehicle reserved, free it back up. */
+        if (!response.ok) {
 
-    if (
-        bookingToDelete &&
-        bookingToDelete.status === "confirmed"
-    ) {
+            throw new Error(
+                "Failed to delete booking."
+            );
 
-        syncVehicleStatus(bookingToDelete, "cancelled");
+        }
 
-    }
 
-    renderBookings();
+        /* Remove from current list */
 
-    if (typeof showToast === "function") {
+        bookings =
+            bookings.filter(function (booking) {
 
-        showToast("Booking deleted.");
+                return Number(booking.id) !==
+                    Number(id);
+
+            });
+
+
+        renderBookings();
+
+
+        if (typeof showToast === "function") {
+
+            showToast(
+                "Booking deleted successfully."
+            );
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Error deleting booking:",
+            error
+        );
+
+
+        alert(
+            "Unable to delete booking."
+        );
 
     }
 
 }
-
-
-/* =========================================
-   FORMAT DATE
-========================================= */
 
 function formatDate(dateString) {
 
@@ -391,12 +374,17 @@ function formatDate(dateString) {
         return "-";
     }
 
+
     const date =
         new Date(dateString);
 
+
     if (isNaN(date.getTime())) {
+
         return dateString;
+
     }
+
 
     return date.toLocaleDateString(
         "en-US",
@@ -409,14 +397,11 @@ function formatDate(dateString) {
 
 }
 
-
-/* =========================================
-   FORMAT STATUS
-========================================= */
-
 function formatStatus(status) {
 
-    switch (String(status).toLowerCase()) {
+    switch (
+        String(status).toLowerCase()
+    ) {
 
         case "pending":
             return "Pending";
@@ -437,11 +422,6 @@ function formatStatus(status) {
 
 }
 
-
-/* =========================================
-   ESCAPE HTML
-========================================= */
-
 function escapeHTML(value) {
 
     return String(value)
@@ -453,18 +433,15 @@ function escapeHTML(value) {
 
 }
 
-
-/* =========================================
-   EVENT LISTENERS
-========================================= */
-
-bookingSearchInput.addEventListener("input", renderBookings);
-
-bookingFilterStatus.addEventListener("change", renderBookings);
+bookingSearchInput.addEventListener(
+    "input",
+    renderBookings
+);
 
 
-/* =========================================
-   INITIAL LOAD
-========================================= */
+bookingFilterStatus.addEventListener(
+    "change",
+    renderBookings
+);
 
-renderBookings();
+loadBookings();

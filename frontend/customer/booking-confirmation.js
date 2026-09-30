@@ -1,37 +1,9 @@
-/* =========================================
-   BOOKING CONFIRMATION
-========================================= */
-
-
-/* =========================================
-   GET BOOKING ID
-========================================= */
 
 const urlParams = new URLSearchParams(window.location.search);
 
 const bookingId = Number(urlParams.get("id"));
 
-
-/* =========================================
-   GET SAVED BOOKINGS
-========================================= */
-
-const savedBookings =
-    JSON.parse(localStorage.getItem("rentoBookings")) || [];
-
-
-/* =========================================
-   FIND BOOKING
-========================================= */
-
-const booking = savedBookings.find(
-    item => Number(item.id) === bookingId
-);
-
-
-/* =========================================
-   PAGE ELEMENTS
-========================================= */
+let booking = null;
 
 const bookingIdElement =
     document.getElementById("booking-id");
@@ -69,42 +41,55 @@ const specialRequestContainer =
 const bookingTotal =
     document.getElementById("booking-total");
 
+async function loadBooking() {
 
-/* =========================================
-   CHECK BOOKING
-========================================= */
+    try {
 
-if (!booking) {
+        const response =
+            await fetch("http://localhost:8080/api/bookings/" + bookingId);
 
-    document.querySelector(".confirmation-container").innerHTML = `
+        if (!response.ok) {
+            throw new Error("Booking not found");
+        }
 
-        <div class="booking-not-found">
+        booking = await response.json();
 
-            <h1>Booking Not Found</h1>
+    } catch (error) {
 
-            <p>
-                We could not find the booking you are looking for.
-            </p>
+        booking = null;
 
-            <a href="browse-vehicles.html"
-               class="confirmation-primary-btn">
-                Browse Vehicles
-            </a>
+    }
 
-        </div>
+    if (!booking) {
 
-    `;
+        document.querySelector(".confirmation-container").innerHTML = `
 
-} else {
+            <div class="booking-not-found">
 
-    displayBooking();
+                <h1>Booking Not Found</h1>
+
+                <p>
+                    We could not find the booking you are looking for.
+                </p>
+
+                <a href="browse-vehicles.html"
+                   class="confirmation-primary-btn">
+                    Browse Vehicles
+                </a>
+
+            </div>
+
+        `;
+
+    } else {
+
+        displayBooking();
+
+    }
 
 }
 
-
-/* =========================================
-   DISPLAY BOOKING
-========================================= */
+loadBooking();
 
 function displayBooking() {
 
@@ -181,23 +166,25 @@ function displayBooking() {
 
 }
 
-
-/* =========================================
-   DISPLAY VEHICLE
-========================================= */
-
-function displayVehicle() {
+async function displayVehicle() {
 
     let vehicle = null;
 
 
-    /* Find vehicle using vehicleId */
+    /* Load vehicle from the backend */
 
-    if (typeof VEHICLES !== "undefined") {
+    try {
 
-        vehicle = VEHICLES.find(
-            item => Number(item.id) === Number(booking.vehicleId)
-        );
+        const vehicleResponse =
+            await fetch("http://localhost:8080/api/vehicles/" + booking.vehicleId);
+
+        if (vehicleResponse.ok) {
+            vehicle = await vehicleResponse.json();
+        }
+
+    } catch (error) {
+
+        vehicle = null;
 
     }
 
@@ -226,7 +213,7 @@ function displayVehicle() {
                 </p>
 
                 <span>
-                    ${formatMoney(vehicle.price)}/day
+                    ${formatMoney(vehicle.pricePerDay)}/day
                 </span>
 
             </div>
@@ -255,11 +242,6 @@ function displayVehicle() {
 
 }
 
-
-/* =========================================
-   FORMAT DATE
-========================================= */
-
 function formatDisplayDate(dateString) {
 
     if (!dateString) {
@@ -278,11 +260,6 @@ function formatDisplayDate(dateString) {
 
 }
 
-
-/* =========================================
-   FORMAT MONEY
-========================================= */
-
 function formatMoney(amount) {
 
     if (typeof money === "function") {
@@ -295,11 +272,6 @@ function formatMoney(amount) {
         Number(amount || 0).toLocaleString();
 
 }
-
-
-/* =========================================
-   CAPITALIZE
-========================================= */
 
 function capitalize(text) {
 

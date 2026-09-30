@@ -3,19 +3,20 @@ package com.vehiclerental.service;
 import com.vehiclerental.model.Customer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 public class CustomerService {
 
-    private final JdbcTemplate jdbcTemplate;
+private final JdbcTemplate jdbcTemplate;
 
-    public CustomerService(JdbcTemplate jdbcTemplate) {
+public CustomerService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-    }
+}
 
-    public List<Customer> getAllCustomers() {
+public List<Customer> getAllCustomers() {
 
         String sql = "SELECT id, name, email, phone, password FROM customers";
 
@@ -29,12 +30,12 @@ public class CustomerService {
                         rs.getString("password")
                 )
         );
-    }
+}
 
-    public Customer findByEmail(String email) {
+public Customer findByEmail(String email) {
 
         String sql = "SELECT id, name, email, phone, password " +
-                    "FROM customers WHERE email = ?";
+                "FROM customers WHERE email = ?";
 
         List<Customer> customers = jdbcTemplate.query(
                 sql,
@@ -105,7 +106,12 @@ public class CustomerService {
 
         return customers.get(0);
     }
-
+    public boolean updatePassword(int id, String password) {
+        return jdbcTemplate.update(
+                "UPDATE customers SET password = ? WHERE id = ?",
+                password, id
+        ) > 0;
+    }
     public Customer getCustomerById(int id) {
 
         String sql = "SELECT id, name, email, phone, password " +
@@ -128,5 +134,43 @@ public class CustomerService {
         }
 
         return customers.get(0);
+    }
+
+    @Transactional
+    public boolean deleteCustomer(int id) {
+
+        if (getCustomerById(id) == null) {
+            return false;
+        }
+
+        // free any vehicle held by this customer's active bookings
+        jdbcTemplate.update(
+                "UPDATE vehicle SET status = 'Available' " +
+                "WHERE status = 'Booked' AND id IN (" +
+                "SELECT vehicle_id FROM bookings " +
+                "WHERE customer_id = ? " +
+                "AND LOWER(status) IN ('pending', 'confirmed'))",
+                id
+        );
+
+        // delete in this order because of the foreign keys:
+        // payments -> bookings -> customer
+        jdbcTemplate.update(
+                "DELETE FROM payment WHERE booking_id IN " +
+                "(SELECT id FROM bookings WHERE customer_id = ?)",
+                id
+        );
+
+        jdbcTemplate.update(
+                "DELETE FROM bookings WHERE customer_id = ?",
+                id
+        );
+
+        jdbcTemplate.update(
+                "DELETE FROM customers WHERE id = ?",
+                id
+        );
+
+        return true;
     }
 }

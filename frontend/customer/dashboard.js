@@ -1,229 +1,560 @@
-const CURRENT_CUSTOMER = "Aayush Subedi";
 
-// Same pattern as my-bookings.js / my-profile.js: prefer whatever is
-// saved in localStorage (which is what admin edits update), and only
-// fall back to the sample BOOKINGS from data.js if nothing is saved.
-function getBookings() {
+const API_BASE = "http://localhost:8080/api";
 
-    const savedBookings =
-        JSON.parse(
-            localStorage.getItem("rentoBookings")
+async function loadCustomerDashboard() {
+
+    try {
+
+        const bookingsResponse =
+            await fetch(`${API_BASE}/bookings`);
+
+        if (!bookingsResponse.ok) {
+            throw new Error("Unable to load bookings.");
+        }
+
+        const allBookings =
+            await bookingsResponse.json();
+
+        // the server only sends this customer's own bookings
+        const customerBookings = allBookings;
+
+        const upcomingBookings =
+            customerBookings.filter(function (booking) {
+
+                return String(booking.status)
+                    .toLowerCase() === "pending";
+
+            });
+
+        const activeBookings =
+            customerBookings.filter(function (booking) {
+
+                return String(booking.status)
+                    .toLowerCase() === "confirmed";
+
+            });
+
+        const completedBookings =
+            customerBookings.filter(function (booking) {
+
+                return String(booking.status)
+                    .toLowerCase() === "completed";
+
+            });
+
+        const cancelledBookings =
+            customerBookings.filter(function (booking) {
+
+                return String(booking.status)
+                    .toLowerCase() === "cancelled";
+
+            });
+
+        document.getElementById(
+            "upcoming-count"
+        ).textContent =
+            upcomingBookings.length;
+
+
+        document.getElementById(
+            "active-count"
+        ).textContent =
+            activeBookings.length;
+
+
+        document.getElementById(
+            "completed-count"
+        ).textContent =
+            completedBookings.length;
+
+
+        document.getElementById(
+            "cancelled-count"
+        ).textContent =
+            cancelledBookings.length;
+
+
+        const recentBookingBox =
+            document.getElementById(
+                "recent-booking"
+            );
+
+
+        if (customerBookings.length === 0) {
+
+            recentBookingBox.innerHTML = `
+                <div class="empty-booking">
+
+                    <h3>No bookings yet</h3>
+
+                    <p>
+                        You haven't made any vehicle
+                        bookings yet.
+                    </p>
+
+                    <a
+                        href="browse-vehicles.html"
+                        class="btn"
+                    >
+                        Browse Vehicles
+                    </a>
+
+                </div>
+            `;
+
+        } else {
+
+            // Latest booking first
+            const recentBooking =
+                [...customerBookings].sort(
+                    function (a, b) {
+
+                        return Number(b.id) -
+                               Number(a.id);
+
+                    }
+                )[0];
+
+
+            const status =
+                String(
+                    recentBooking.status || "pending"
+                ).toLowerCase();
+
+
+            recentBookingBox.innerHTML = `
+
+                <div class="booking-main">
+
+                    <div>
+
+                        <span class="booking-number">
+                            Booking #${escapeHTML(
+                                recentBooking.id
+                            )}
+                        </span>
+
+                        <h3>
+                            ${escapeHTML(
+                                recentBooking.vehicle ||
+                                "Vehicle"
+                            )}
+                        </h3>
+
+                    </div>
+
+                    <span
+                        class="status status-${escapeHTML(status)}"
+                    >
+                        ${formatStatus(status)}
+                    </span>
+
+                </div>
+
+
+                <div class="booking-details">
+
+                    <div>
+
+                        <span class="booking-label">
+                            Pick-up
+                        </span>
+
+                        <strong>
+                            ${formatDate(
+                                recentBooking.start
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span class="booking-label">
+                            Return
+                        </span>
+
+                        <strong>
+                            ${formatDate(
+                                recentBooking.end
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span class="booking-label">
+                            Total
+                        </span>
+
+                        <strong>
+                            ${money(
+                                recentBooking.total
+                            )}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="booking-actions">
+
+                    <a
+                        href="booking-details.html?id=${encodeURIComponent(
+                            recentBooking.id
+                        )}"
+                        class="btn btn-small"
+                    >
+                        View booking
+                    </a>
+
+                </div>
+            `;
+        }
+
+
+        await loadAvailableVehicles();
+
+
+    } catch (error) {
+
+        console.error(
+            "Customer dashboard error:",
+            error
         );
 
-    if (
-        savedBookings &&
-        Array.isArray(savedBookings)
-    ) {
+        const recentBookingBox =
+            document.getElementById(
+                "recent-booking"
+            );
 
-        return savedBookings;
+        if (recentBookingBox) {
 
+            recentBookingBox.innerHTML = `
+                <div class="empty-booking">
+
+                    <h3>Unable to load dashboard</h3>
+
+                    <p>
+                        Please make sure the backend
+                        server is running.
+                    </p>
+
+                </div>
+            `;
+        }
     }
-
-    if (typeof BOOKINGS !== "undefined") {
-
-        return BOOKINGS;
-
-    }
-
-    return [];
-
 }
 
-const customerBookings = getBookings().filter(function (booking) {
-    return booking.customer === CURRENT_CUSTOMER;
-});
+async function loadAvailableVehicles() {
 
-const upcomingBookings = customerBookings.filter(function (booking) {
-    return booking.status === "confirmed" ||
-        booking.status === "pending";
-});
-const activeBookings = customerBookings.filter(function (booking) {
-    return booking.status === "active";
-});
-const completedBookings = customerBookings.filter(function (booking) {
-    return booking.status === "completed";
-});
-const cancelledBookings = customerBookings.filter(function (booking) {
-    return booking.status === "cancelled";
-});
-
-document.getElementById("upcoming-count").textContent =
-    upcomingBookings.length;
-document.getElementById("active-count").textContent =
-    activeBookings.length;
-document.getElementById("completed-count").textContent =
-    completedBookings.length;
-document.getElementById("cancelled-count").textContent =
-    cancelledBookings.length;
-
-const recentBookingBox =
-    document.getElementById("recent-booking");
+    const vehicleContainer =
+        document.getElementById(
+            "customer-vehicles"
+        );
 
 
-if (customerBookings.length === 0) {
+    if (!vehicleContainer) {
+        return;
+    }
 
-    recentBookingBox.innerHTML = `
-        <div class="empty-booking">
-            <h3>No bookings yet</h3>
+
+    try {
+
+        const response =
+            await fetch(`${API_BASE}/vehicles`);
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Unable to load vehicles."
+            );
+        }
+
+
+        const vehicles =
+            await response.json();
+
+
+        // Only available vehicles
+        const availableVehicles =
+            vehicles.filter(function (vehicle) {
+
+                return String(
+                    vehicle.status || ""
+                ).toLowerCase() === "available";
+
+            }).slice(0, 3);
+
+
+        vehicleContainer.innerHTML = "";
+
+
+        if (availableVehicles.length === 0) {
+
+            vehicleContainer.innerHTML = `
+                <p>
+                    No vehicles are currently
+                    available.
+                </p>
+            `;
+
+            return;
+        }
+
+
+        availableVehicles.forEach(
+            function (vehicle) {
+
+                vehicleContainer.innerHTML +=
+                    customerVehicleCard(vehicle);
+
+            }
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Vehicle loading error:",
+            error
+        );
+
+
+        vehicleContainer.innerHTML = `
             <p>
-                You haven't made any vehicle bookings yet.
+                Unable to load available vehicles.
             </p>
-            <a href="browse-vehicles.html" class="btn">
-                Browse Vehicles
-            </a>
-        </div>
-    `;
-
-} else {
-
-    // Sort bookings by ID so the latest booking appears first
-    const recentBooking = [...customerBookings].sort(function (a, b) {
-        return b.id - a.id;
-    })[0];
-    recentBookingBox.innerHTML = `
-        <div class="booking-main">
-            <div>
-                <span class="booking-number">
-                    Booking #${recentBooking.id}
-                </span>
-                <h3>
-                    ${recentBooking.vehicle}
-                </h3>
-            </div>
-            <span class="status status-${recentBooking.status}">
-                ${recentBooking.status}
-            </span>
-        </div>
-
-        <div class="booking-details">
-            <div>
-                <span class="booking-label">
-                    Pick-up
-                </span>
-                <strong>
-                    ${formatDate(recentBooking.start)}
-                </strong>
-            </div>
-
-            <div>
-                <span class="booking-label">
-                    Return
-                </span>
-                <strong>
-                    ${formatDate(recentBooking.end)}
-                </strong>
-            </div>
-
-            <div>
-                <span class="booking-label">
-                    Total
-                </span>
-                <strong>
-                    ${money(recentBooking.total)}
-                </strong>
-            </div>
-        </div>
-
-        <div class="booking-actions">
-            <a href="booking-details.html?id=${recentBooking.id}"
-            class="btn btn-small">
-                View booking
-            </a>
-        </div>
-    `;
+        `;
+    }
 }
-
-const vehicleContainer =
-    document.getElementById("customer-vehicles");
-// Only show vehicles that are currently available
-const availableVehicles = VEHICLES
-    .filter(function (vehicle) {
-        return vehicle.status === "available";
-    })
-    .slice(0, 3);
 
 function customerVehicleCard(vehicle) {
+
+    const imagePath =
+        vehicle.image
+            ? "../public/" + vehicle.image
+            : "";
+
+
+    const transmission =
+        vehicle.transmission ||
+        "Automatic";
+
+
+    const seats =
+        vehicle.seats ||
+        0;
+
+
+    const rating =
+        Number(vehicle.rating || 0);
+
+
     return `
+
         <div class="vehicle-card">
+
             <div class="vc-header">
+
                 <div>
+
                     <span class="vc-name">
-                        ${vehicle.name}
+                        ${escapeHTML(
+                            vehicle.name || "Vehicle"
+                        )}
                     </span>
+
                     <span class="vc-subtitle">
-                        or similar ${vehicle.category}
+                        or similar
+                        ${escapeHTML(
+                            vehicle.category || ""
+                        )}
                     </span>
+
                 </div>
+
             </div>
 
+
             <div class="vc-specs">
+
                 <span>
-                    ⚙️ ${vehicle.transmission}
+                    ⚙️
+                    ${escapeHTML(transmission)}
                 </span>
+
                 <span>
-                    👤 ${vehicle.seats}
+                    👤
+                    ${escapeHTML(seats)}
                 </span>
+
                 <span>
                     ❄️ A/C
                 </span>
+
             </div>
+
 
             <div class="vc-body">
-    ${vehiclePictureHTML(
-        {
-            ...vehicle,
-            image: "../public/" + vehicle.image
-        },
-        "vc-photo"
-    )}
 
-    <div class="vc-price-block">
-        <div class="vc-price">
-            ${money(vehicle.pricePerDay)}
-        </div>
-        <div class="vc-price-sub">
-            per day
-        </div>
-    </div>
-</div>
+                ${
+                    typeof vehiclePictureHTML ===
+                    "function"
+
+                    ? vehiclePictureHTML(
+                        {
+                            ...vehicle,
+                            image: imagePath
+                        },
+                        "vc-photo"
+                    )
+
+                    : `
+                        <div class="vc-photo">
+                            ${
+                                imagePath
+                                ? `
+                                    <img
+                                        src="${escapeHTML(
+                                            imagePath
+                                        )}"
+                                        alt="${escapeHTML(
+                                            vehicle.name ||
+                                            "Vehicle"
+                                        )}"
+                                    >
+                                  `
+                                : `
+                                    <div>
+                                        No Image
+                                    </div>
+                                  `
+                            }
+                        </div>
+                    `
+                }
+
+
+                <div class="vc-price-block">
+
+                    <div class="vc-price">
+                        ${money(
+                            vehicle.pricePerDay || 0
+                        )}
+                    </div>
+
+                    <div class="vc-price-sub">
+                        per day
+                    </div>
+
+                </div>
+
+            </div>
+
 
             <div class="vc-rating-row">
+
                 <div class="vc-rating-score">
-                    ${vehicle.rating.toFixed(1)} ★
+                    ${rating.toFixed(1)} ★
                 </div>
+
                 <div class="vc-rating-label">
-                    ${ratingLabel(vehicle.rating)}
+                    ${ratingLabel(rating)}
                 </div>
+
             </div>
+
 
             <button
                 class="vc-book-btn"
-                onclick="bookVehicle(${vehicle.id})">
+                onclick="bookVehicle(${Number(
+                    vehicle.id
+                )})"
+            >
                 Book now
             </button>
 
         </div>
     `;
 }
-if (availableVehicles.length === 0) {
-    vehicleContainer.innerHTML = `
-        <p>No vehicles are currently available.</p>
-    `;
-} else {
-    availableVehicles.forEach(function (vehicle) {
-        vehicleContainer.innerHTML +=
-            customerVehicleCard(vehicle);
-    });
-}
+
 function bookVehicle(vehicleId) {
+
     window.location.href =
-        "vehicle-details.html?id=" + vehicleId;
+        "vehicle-details.html?id=" +
+        encodeURIComponent(vehicleId);
 }
+
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-    });
+
+    if (!dateString) {
+        return "-";
+    }
+
+
+    const date =
+        new Date(dateString);
+
+
+    if (isNaN(date.getTime())) {
+        return dateString;
+    }
+
+
+    return date.toLocaleDateString(
+        "en-GB",
+        {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        }
+    );
 }
+
+function formatStatus(status) {
+
+    switch (
+        String(status).toLowerCase()
+    ) {
+
+        case "pending":
+            return "Pending";
+
+        case "confirmed":
+            return "Confirmed";
+
+        case "completed":
+            return "Completed";
+
+        case "cancelled":
+            return "Cancelled";
+
+        default:
+            return status;
+    }
+}
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        loadCustomerDashboard();
+
+    }
+);

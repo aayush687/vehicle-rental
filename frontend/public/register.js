@@ -32,12 +32,39 @@ registerForm.addEventListener("submit", function (event) {
     } else {
     document.getElementById("password-error").style.display = "none";
     }
+    registerForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    // ...keep all your existing validation code as it is...
+
     if (!isValid) {
-    return;
+        return;
     }
 
-    showToast("Account created. Redirecting to login...");
-    setTimeout(function () {
-    window.location.href = "login.html";
-    }, 1200);
+    try {
+        const response = await fetch("http://localhost:8080/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: name.value.trim(),
+                email: email.value.trim(),
+                phone: phone.value.trim(),
+                password: password.value
+            })
+        });
+
+        if (!response.ok) {
+            // backend sends a plain-text reason, e.g. "Email is already registered."
+            showToast(await response.text());
+            return;
+        }
+
+        showToast("Account created. Redirecting to login...");
+        setTimeout(function () {
+            window.location.href = "login.html";
+        }, 1200);
+
+    } catch (error) {
+        showToast("Cannot reach the server. Is the backend running?");
+    }
+});
 });

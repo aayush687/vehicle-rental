@@ -12,7 +12,7 @@ public class Payment {
     }
 
     public Payment(int id, int bookingId, double amount,
-                   String paymentDate, String status) {
+                String paymentDate, String status) {
         this.id = id;
         this.bookingId = bookingId;
         this.amount = amount;
